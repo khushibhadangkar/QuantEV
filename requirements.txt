@@ -23,6 +23,7 @@ dill==0.4.1
 dnspython==2.8.0
 docplex==2.32.264
 email-validator==2.3.0
+-e git+https://github.com/khushibhadangkar/QuantEV.git@11bfb5eb4f622c900c7bb9f985ccbf20a1caa25d#egg=evision_backend
 executing==2.2.1
 fastapi==0.141.1
 fastapi-cli==0.0.32
@@ -86,6 +87,7 @@ prompt_toolkit==3.0.53
 psutil==7.2.2
 ptyprocess==0.7.0
 pure_eval==0.2.3
+pyarrow==25.0.0
 pycparser==3.0
 pydantic==2.13.4
 pydantic-extra-types==2.11.1
