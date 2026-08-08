@@ -1,2 +1,2 @@
 # backend/optimization
-# Classical optimizer module — greedy / scipy-based station placement baseline.
+# Classical optimizer — exhaustive and greedy station-placement baselines.
