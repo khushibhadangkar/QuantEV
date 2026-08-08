@@ -23,7 +23,7 @@ dill==0.4.1
 dnspython==2.8.0
 docplex==2.32.264
 email-validator==2.3.0
--e git+https://github.com/khushibhadangkar/QuantEV.git@11bfb5eb4f622c900c7bb9f985ccbf20a1caa25d#egg=evision_backend
+-e git+https://github.com/khushibhadangkar/QuantEV.git@fcc55e0cb15399f0996d607a1b44b9d4cd22f721#egg=evision_backend
 executing==2.2.1
 fastapi==0.141.1
 fastapi-cli==0.0.32
