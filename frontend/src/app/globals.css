@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   QuantEV Design System
+   Apple-inspired: minimal · calm · precise · premium
+   Palette: white / light-grey / deep navy / glass surfaces
+───────────────────────────────────────────────────────────── */
+
+@theme inline {
+  /* ── Typeface ─────────────────────────────────────────────── */
+  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace,
+    monospace;
+
+  /* ── Core palette ────────────────────────────────────────── */
+  --color-canvas:        #f5f6f8;      /* page background */
+  --color-surface:       #ffffff;      /* primary card surface */
+  --color-surface-2:     #f9fafb;      /* secondary surface */
+  --color-border:        #e4e7ed;      /* subtle border */
+  --color-border-strong: #c8cfd9;      /* stronger separator */
+
+  /* Deep navy family */
+  --color-navy-950: #080e1a;
+  --color-navy-900: #0d1a2e;
+  --color-navy-800: #132240;
+  --color-navy-700: #1a3055;
+  --color-navy-600: #234070;
+  --color-navy-500: #2e5490;
+  --color-navy-400: #4a7bc4;
+  --color-navy-300: #7aa3d9;
+  --color-navy-200: #b3ccea;
+  --color-navy-100: #dce8f5;
+  --color-navy-50:  #f0f5fb;
+
+  /* Text hierarchy */
+  --color-text-primary:   #0d1a2e;
+  --color-text-secondary: #4a5568;
+  --color-text-tertiary:  #8a95a8;
+  --color-text-inverse:   #ffffff;
+
+  /* Semantic */
+  --color-success:   #1a9e5e;
+  --color-success-bg: #f0faf5;
+  --color-warning:   #b45309;
+  --color-warning-bg: #fffbeb;
+  --color-error:     #c0392b;
+  --color-error-bg:  #fef2f0;
+
+  /* Glass */
+  --color-glass-white:  rgba(255, 255, 255, 0.72);
+  --color-glass-navy:   rgba(13, 26, 46, 0.64);
+
+  /* Shadow tokens */
+  --shadow-sm:  0 1px 3px rgba(13,26,46,0.06), 0 1px 2px rgba(13,26,46,0.04);
+  --shadow-md:  0 4px 16px rgba(13,26,46,0.08), 0 2px 6px rgba(13,26,46,0.04);
+  --shadow-lg:  0 12px 40px rgba(13,26,46,0.12), 0 4px 12px rgba(13,26,46,0.06);
+  --shadow-xl:  0 24px 64px rgba(13,26,46,0.18), 0 8px 24px rgba(13,26,46,0.08);
+  --shadow-glow: 0 0 0 1px rgba(46,84,144,0.15), 0 8px 32px rgba(46,84,144,0.18);
+}
+
+/* ── Base reset & body ───────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.011em;
+}
+
+/* ── Utility classes ─────────────────────────────────────────── */
+.glass {
+  background: var(--color-glass-white);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.glass-navy {
+  background: var(--color-glass-navy);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.card-elevated {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* ── Selection ───────────────────────────────────────────────── */
+::selection {
+  background: var(--color-navy-200);
+  color: var(--color-navy-900);
+}
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes draw-line {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+.animate-fade-in      { animation: fade-in 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-fade-in-up   { animation: fade-in-up 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-scale-in     { animation: scale-in 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-pulse-soft   { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-spin-slow    { animation: spin-slow 3s linear infinite; }
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-canvas) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── Stagger helpers ─────────────────────────────────────────── */
+.stagger-1  { animation-delay: 0.05s; }
+.stagger-2  { animation-delay: 0.10s; }
+.stagger-3  { animation-delay: 0.15s; }
+.stagger-4  { animation-delay: 0.20s; }
+.stagger-5  { animation-delay: 0.25s; }
+.stagger-6  { animation-delay: 0.30s; }
+.stagger-7  { animation-delay: 0.35s; }
+.stagger-8  { animation-delay: 0.40s; }
+
+/* ── Focus ring ──────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-navy-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
