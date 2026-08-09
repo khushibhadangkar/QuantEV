@@ -5,7 +5,7 @@
 
 import type { OptimizeRequest, OptimizeResponse } from "@/types/api";
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "https://quantev.onrender.com";
 
 // ── Sanitise error messages ───────────────────────────────────────────────────
 // Backend 500 detail strings can contain raw binary data from Qiskit/C
