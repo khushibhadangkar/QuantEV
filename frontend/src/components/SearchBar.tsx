@@ -54,15 +54,15 @@ export function SearchBar({ onLocationSelect, disabled }: SearchBarProps) {
       (pos) => {
         setGeoLoading(false);
         const { latitude, longitude } = pos.coords;
-        setQuery("My area");
-        onLocationSelect(latitude, longitude, "My area");
+        setQuery("Current area");
+        onLocationSelect(latitude, longitude, "Current area");
       },
       () => {
         setGeoLoading(false);
         // Fallback to Shenzhen center if permission denied
         const fallback = { lat: 22.5431, lng: 114.0579 };
-        setQuery("Shenzhen (central)");
-        onLocationSelect(fallback.lat, fallback.lng, "Shenzhen (central)");
+        setQuery("Shenzhen (approximate)");
+        onLocationSelect(fallback.lat, fallback.lng, "Shenzhen");
       },
       { timeout: 6000 }
     );
@@ -116,7 +116,7 @@ export function SearchBar({ onLocationSelect, disabled }: SearchBarProps) {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 160)}
-          placeholder="Select an area in Shenzhen…"
+          placeholder="Select a planning area in Shenzhen…"
           disabled={disabled}
           style={{
             flex: 1,
@@ -194,7 +194,7 @@ export function SearchBar({ onLocationSelect, disabled }: SearchBarProps) {
               whiteSpace: "nowrap",
             }}
           >
-            Use my area
+            My area
           </span>
         </button>
       </div>

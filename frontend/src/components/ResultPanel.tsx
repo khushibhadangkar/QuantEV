@@ -16,7 +16,7 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 }
 
 function formatDist(km: number): string {
-  return km < 1 ? `${Math.round(km * 1000)} m away` : `${km.toFixed(1)} km away`;
+  return km < 1 ? `${Math.round(km * 1000)} m from area` : `${km.toFixed(1)} km from area`;
 }
 
 function formatDemand(kwh: number): string {
@@ -24,11 +24,11 @@ function formatDemand(kwh: number): string {
   return `${Math.round(kwh)} kWh/h`;
 }
 
-function qualityLabel(kwh: number, maxKwh: number): { label: string; color: string } {
+function demandLabel(kwh: number, maxKwh: number): { label: string; color: string } {
   const ratio = maxKwh > 0 ? kwh / maxKwh : 0;
-  if (ratio >= 0.7) return { label: "Very high activity", color: "var(--color-positive)" };
-  if (ratio >= 0.35) return { label: "Good activity", color: "#6b8f3a" };
-  return { label: "Moderate activity", color: "var(--color-ink-3)" };
+  if (ratio >= 0.7) return { label: "Very high demand", color: "var(--color-positive)" };
+  if (ratio >= 0.35) return { label: "High demand", color: "#6b8f3a" };
+  return { label: "Moderate demand", color: "var(--color-ink-3)" };
 }
 
 interface ResultPanelProps {
@@ -66,7 +66,7 @@ export function ResultPanel({
       className="anim-slide-up"
       style={{ display: "flex", flexDirection: "column", gap: "0" }}
     >
-      {/* Context header */}
+      {/* Header */}
       <div
         style={{
           padding: "18px 22px 14px",
@@ -83,7 +83,7 @@ export function ResultPanel({
             marginBottom: "4px",
           }}
         >
-          Nearest to {locationName}
+          Planning area · {locationName}
         </div>
         <div
           style={{
@@ -95,15 +95,15 @@ export function ResultPanel({
             lineHeight: 1.2,
           }}
         >
-          Your best charging option
+          Recommended infrastructure locations
         </div>
       </div>
 
-      {/* Best match */}
+      {/* Primary recommendation */}
       {bestZone && (() => {
         const dist = haversine(userLat, userLng, bestZone.latitude, bestZone.longitude);
         const demand = bestZone.predicted_demand_kwh_h;
-        const quality = qualityLabel(demand, maxDemand);
+        const demandInfo = demandLabel(demand, maxDemand);
 
         return (
           <div
@@ -113,7 +113,7 @@ export function ResultPanel({
               background: "var(--color-navy-50)",
             }}
           >
-            {/* Zone id + distance */}
+            {/* Zone label + distance */}
             <div
               style={{
                 display: "flex",
@@ -131,7 +131,7 @@ export function ResultPanel({
                   lineHeight: 1,
                 }}
               >
-                Station {bestZone.label.replace("Z", "")}
+                Site {bestZone.label}
               </div>
               <div
                 style={{
@@ -144,11 +144,11 @@ export function ResultPanel({
               </div>
             </div>
 
-            {/* Stats row */}
+            {/* Stats */}
             <div style={{ display: "flex", gap: "16px", marginBottom: "14px" }}>
               <div>
                 <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)", marginBottom: "2px" }}>
-                  Charging activity
+                  Predicted demand
                 </div>
                 <div style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink)" }}>
                   {formatDemand(demand)}
@@ -157,17 +157,17 @@ export function ResultPanel({
               <div style={{ width: "1px", background: "var(--color-border)" }} />
               <div>
                 <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)", marginBottom: "2px" }}>
-                  Location quality
+                  Site suitability
                 </div>
-                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: quality.color }}>
-                  {quality.label}
+                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: demandInfo.color }}>
+                  {demandInfo.label}
                 </div>
               </div>
             </div>
 
-            {/* CTA */}
+            {/* View on map link */}
             <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${bestZone.latitude},${bestZone.longitude}`}
+              href={`https://www.google.com/maps/search/?api=1&query=${bestZone.latitude},${bestZone.longitude}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -187,13 +187,13 @@ export function ResultPanel({
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
-              View route →
+              View site on map →
             </a>
           </div>
         );
       })()}
 
-      {/* Other recommended options */}
+      {/* Additional recommended sites */}
       {otherSelected.length > 0 && (
         <div>
           <div
@@ -254,7 +254,7 @@ export function ResultPanel({
                       color: "var(--color-ink)",
                     }}
                   >
-                    Station {zone.label.replace("Z", "")}
+                    Site {zone.label}
                   </div>
                   <div
                     style={{
@@ -263,11 +263,11 @@ export function ResultPanel({
                       color: "var(--color-ink-4)",
                     }}
                   >
-                    {formatDemand(demand)} · {formatDist(dist)}
+                    {formatDemand(demand)} predicted · {formatDist(dist)}
                   </div>
                 </div>
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${zone.latitude},${zone.longitude}`}
+                  href={`https://www.google.com/maps/search/?api=1&query=${zone.latitude},${zone.longitude}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -287,7 +287,7 @@ export function ResultPanel({
                     (e.currentTarget.style.background = "transparent")
                   }
                 >
-                  Route
+                  View
                 </a>
               </div>
             );
@@ -295,7 +295,7 @@ export function ResultPanel({
         </div>
       )}
 
-      {/* Search again */}
+      {/* New analysis */}
       <div
         style={{
           padding: "14px 22px",
@@ -325,7 +325,7 @@ export function ResultPanel({
             e.currentTarget.style.color = "var(--color-ink-3)";
           }}
         >
-          Search again
+          New analysis
         </button>
       </div>
     </div>

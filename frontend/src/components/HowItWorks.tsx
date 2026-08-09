@@ -55,8 +55,9 @@ export function HowItWorks({ data }: HowItWorksProps) {
               maxWidth: "520px",
             }}
           >
-            QuantEV combines two types of intelligence to find the best charging locations —
-            trained on real data, optimised by quantum-inspired computing.
+            QuantEV is an infrastructure planning platform that uses AI demand forecasting
+            and quantum optimisation to identify where new EV charging stations will
+            have the greatest impact.
           </p>
         </div>
 
@@ -65,18 +66,18 @@ export function HowItWorks({ data }: HowItWorksProps) {
           {[
             {
               num: "01",
-              title: "AI learns from data",
-              body: "QuantEV has been trained on historical EV charging patterns across Shenzhen. It predicts how much charging demand each location will generate — accounting for time of day, day of week, and seasonal trends.",
+              title: "AI forecasts demand at each candidate site",
+              body: "QuantEV is trained on historical EV charging patterns across Shenzhen. For each of the 8 candidate zones, it predicts hourly electricity demand — accounting for time of day, day of week, and seasonal trends.",
             },
             {
               num: "02",
-              title: "A mathematical model evaluates every combination",
-              body: "With 8 candidate locations and 3 stations to place, there are 56 possible configurations. Rather than picking intuitively, QuantEV evaluates all of them mathematically — balancing demand, geographic coverage, and proximity.",
+              title: "A mathematical model evaluates every placement combination",
+              body: "With 8 candidate sites and a fixed budget of 3 stations, there are 56 possible configurations. QuantEV evaluates all of them simultaneously — balancing predicted demand, geographic coverage, and proximity between sites.",
             },
             {
               num: "03",
-              title: "Quantum computing finds the optimum",
-              body: "The placement problem is solved using a quantum optimisation algorithm (QAOA) running on a quantum circuit simulator. This finds the globally optimal placement — the combination that maximises total charging coverage across the network.",
+              title: "Quantum optimisation finds the globally best placement",
+              body: "The placement problem is solved using a quantum optimisation algorithm running on a quantum circuit simulator. This finds the configuration that maximises total predicted demand coverage across the network — the globally optimal infrastructure plan.",
             },
           ].map(({ num, title, body }, i) => (
             <div

@@ -52,15 +52,15 @@
 /* ── Reset & base ─────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
+html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Do NOT set height:100% on html/body — the page uses 100dvh on its own root */
 body {
+  margin: 0;
+  padding: 0;
   font-family: "Times New Roman", "Times", Georgia, serif;
   background: var(--color-white);
   color: var(--color-ink);

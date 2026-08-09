@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "QuantEV — Find Charging Stations Near You",
+  title: "QuantEV — EV Infrastructure Planning",
   description:
-    "Find the best EV charging locations near you in Shenzhen. Powered by AI demand prediction and quantum optimisation.",
+    "AI-powered demand prediction and quantum optimisation to identify the best locations for new EV charging infrastructure in Shenzhen.",
 };
 
 export const viewport: Viewport = {
@@ -15,8 +15,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" style={{ height: "100%" }}>
-      <body style={{ height: "100%", margin: 0, padding: 0 }}>{children}</body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }

@@ -92,7 +92,11 @@ export default function Page() {
   }, [reset]);
 
   return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: "white" }}>
+    // The page is a full-viewport column. The map section takes up all remaining
+    // space after the 56px fixed header. It uses calc() for an explicit height
+    // so absolute-positioned children (the Leaflet container) have a real
+    // pixel dimension to resolve against — flex:1 alone is not enough.
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "white" }}>
 
       {/* ── HEADER ─────────────────────────────────────────── */}
       <header
@@ -100,7 +104,8 @@ export default function Page() {
         style={{
           position: "fixed",
           top: 0,
-          insetInline: 0,
+          left: 0,
+          right: 0,
           zIndex: 50,
           height: "56px",
           display: "flex",
@@ -151,7 +156,7 @@ export default function Page() {
           }}
         >
           {phase === "idle" && "Infrastructure Planning · Shenzhen"}
-          {phase === "located" && "Area selected"}
+          {phase === "located" && "Planning area selected"}
           {phase === "searching" && "Analysing…"}
           {phase === "result" && "Recommendation ready"}
           {phase === "error" && "Analysis failed"}
@@ -181,10 +186,18 @@ export default function Page() {
       </header>
 
       {/* ── MAP + OVERLAY PANEL ────────────────────────────── */}
-      <div style={{ flex: 1, position: "relative", marginTop: "56px" }}>
+      {/* Explicit height so absolute children have a real pixel dimension.
+          flex:1 alone does not give absolute-positioned children anything to
+          resolve against — this is the root cause of the blank map. */}
+      <div style={{
+        position: "relative",
+        height: "calc(100vh - 56px)",
+        marginTop: "56px",
+        flexShrink: 0,
+      }}>
 
-        {/* Full-bleed map */}
-        <div style={{ position: "absolute", inset: 0 }}>
+        {/* Full-bleed map — fills the entire section */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
           <ChargingMap ref={mapRef} />
         </div>
 
@@ -227,9 +240,9 @@ export default function Page() {
                     lineHeight: 1.2,
                   }}
                 >
-                  Find the best location
+                  Find the best locations for
                   <br />
-                  <em style={{ color: "var(--color-navy-700)" }}>for new infrastructure</em>
+                  <em style={{ color: "var(--color-navy-700)" }}>new charging infrastructure</em>
                 </h1>
                 <p
                   style={{
@@ -240,7 +253,8 @@ export default function Page() {
                     margin: 0,
                   }}
                 >
-                  Select an area in Shenzhen and QuantEV will recommend where to build new EV charging stations based on demand, coverage, and optimisation.
+                  Select a planning area in Shenzhen to analyse predicted EV demand
+                  and identify the optimal sites for new charging stations.
                 </p>
               </div>
 
@@ -298,7 +312,7 @@ export default function Page() {
                         color: "var(--color-ink-4)",
                       }}
                     >
-                      {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E · focus area
+                      Planning area · {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E
                     </div>
                   </div>
                   <button
@@ -318,7 +332,7 @@ export default function Page() {
                   </button>
                 </div>
 
-                {/* Find button */}
+                {/* Analyse button */}
                 <div style={{ padding: "16px 22px" }}>
                   <button
                     onClick={handleSearch}
@@ -345,7 +359,7 @@ export default function Page() {
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
-                    Find best locations →
+                    Analyse infrastructure →
                   </button>
                 </div>
               </div>
@@ -490,7 +504,7 @@ export default function Page() {
                   whiteSpace: "nowrap",
                 }}
               >
-                8 candidate zones · select an area to begin
+                8 candidate zones across Shenzhen
               </span>
             </div>
           </div>

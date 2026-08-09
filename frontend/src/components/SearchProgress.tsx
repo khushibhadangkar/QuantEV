@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 
 const STEPS = [
-  { id: "location", label: "Finding your location…", duration: 600 },
-  { id: "demand",   label: "Checking demand nearby…", duration: 3000 },
-  { id: "options",  label: "Comparing charging options…", duration: 5000 },
-  { id: "best",     label: "Finding your best match…", duration: 60000 },
+  { id: "area",    label: "Identifying planning area…",        duration: 600 },
+  { id: "demand",  label: "Analysing predicted EV demand…",    duration: 3000 },
+  { id: "coverage", label: "Evaluating coverage and reach…",   duration: 5000 },
+  { id: "optimal", label: "Identifying optimal locations…",    duration: 60000 },
 ];
 
 export function SearchProgress() {
