@@ -1,0 +1,2113 @@
+{
+  "metadata": {
+    "date": "2026-08-09T10:05:21.739658",
+    "script": "experiments/06_qaoa_validation.py",
+    "qiskit_version": "2.5.1",
+    "aer_version": "0.17.2",
+    "backend": "AerSimulator (local, no IBM Quantum)",
+    "n_qubits": 8,
+    "budget_k": 3,
+    "lambda": 10.0,
+    "shots": 8192,
+    "reps_tested": [
+      1,
+      2,
+      3
+    ],
+    "seeds_tested": [
+      42,
+      7,
+      21,
+      100
+    ],
+    "n_total_runs": 12,
+    "classical_optimum_zones": [
+      "Z0",
+      "Z2",
+      "Z3"
+    ],
+    "classical_optimum_energy": -139.697448,
+    "classical_optimum_bits": "10110000",
+    "zone_qubit_mapping": {
+      "Z0": 0,
+      "Z1": 1,
+      "Z2": 2,
+      "Z3": 3,
+      "Z4": 4,
+      "Z5": 5,
+      "Z6": 6,
+      "Z7": 7
+    }
+  },
+  "runs": [
+    {
+      "reps": 1,
+      "seed": 42,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.01135254,
+      "circuit_depth": 17,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.5799,
+      "eigenvalue": -24.51494316,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        -2.668549,
+        1.548579
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11010000",
+          "probability": 0.08398438,
+          "qubo_energy": -138.708278,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11011000",
+          "probability": 0.04724121,
+          "qubo_energy": -130.723004,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11010001",
+          "probability": 0.03442383,
+          "qubo_energy": -130.874769,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11110000",
+          "probability": 0.03063965,
+          "qubo_energy": -134.982186,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11001000",
+          "probability": 0.02526855,
+          "qubo_energy": -135.245036,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "01011000",
+          "probability": 0.02429199,
+          "qubo_energy": -102.777432,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11010100",
+          "probability": 0.02307129,
+          "qubo_energy": -131.030966,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z5"
+          ]
+        },
+        {
+          "bitstring": "01010000",
+          "probability": 0.02258301,
+          "qubo_energy": -90.762706,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11000000",
+          "probability": 0.02111816,
+          "qubo_energy": -123.23031,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1"
+          ]
+        },
+        {
+          "bitstring": "01010001",
+          "probability": 0.01940918,
+          "qubo_energy": -102.929197,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z7"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 1,
+      "seed": 7,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00195312,
+      "circuit_depth": 17,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.5247,
+      "eigenvalue": -4.44381154,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        -4.116223,
+        3.247984
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11010000",
+          "probability": 0.10314941,
+          "qubo_energy": -138.708278,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11011000",
+          "probability": 0.0637207,
+          "qubo_energy": -130.723004,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "00101111",
+          "probability": 0.0612793,
+          "qubo_energy": -65.213975,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z2",
+            "Z4",
+            "Z5",
+            "Z6",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "00111111",
+          "probability": 0.05102539,
+          "qubo_energy": -20.691943,
+          "n_stations": 6,
+          "feasible": false,
+          "zones": [
+            "Z2",
+            "Z3",
+            "Z4",
+            "Z5",
+            "Z6",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11010001",
+          "probability": 0.02453613,
+          "qubo_energy": -130.874769,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "01010000",
+          "probability": 0.0222168,
+          "qubo_energy": -90.762706,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "00111101",
+          "probability": 0.0213623,
+          "qubo_energy": -68.255781,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z2",
+            "Z3",
+            "Z4",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10100110",
+          "probability": 0.01904297,
+          "qubo_energy": -128.97833,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "00101101",
+          "probability": 0.01757812,
+          "qubo_energy": -92.777813,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z2",
+            "Z4",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "01011000",
+          "probability": 0.01745605,
+          "qubo_energy": -102.777432,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 1,
+      "seed": 21,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00305176,
+      "circuit_depth": 17,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.4808,
+      "eigenvalue": -26.6614911,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        -5.412098,
+        4.688686
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11010000",
+          "probability": 0.15808105,
+          "qubo_energy": -138.708278,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "10010000",
+          "probability": 0.11572266,
+          "qubo_energy": -123.42354,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "10011000",
+          "probability": 0.07275391,
+          "qubo_energy": -135.438266,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "01010000",
+          "probability": 0.06213379,
+          "qubo_energy": -90.762706,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11011000",
+          "probability": 0.05737305,
+          "qubo_energy": -130.723004,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11010010",
+          "probability": 0.05187988,
+          "qubo_energy": -131.14444,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "01010010",
+          "probability": 0.03942871,
+          "qubo_energy": -103.198868,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10010010",
+          "probability": 0.03015137,
+          "qubo_energy": -135.859702,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "00010000",
+          "probability": 0.02416992,
+          "qubo_energy": -55.477968,
+          "n_stations": 1,
+          "feasible": false,
+          "zones": [
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "10011001",
+          "probability": 0.02209473,
+          "qubo_energy": -127.604757,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z4",
+            "Z7"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 1,
+      "seed": 100,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00341797,
+      "circuit_depth": 17,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.5819,
+      "eigenvalue": -7.31323856,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        1.854337,
+        -1.583036
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11011000",
+          "probability": 0.02087402,
+          "qubo_energy": -130.723004,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "01011001",
+          "probability": 0.01843262,
+          "qubo_energy": -94.943923,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "01111000",
+          "probability": 0.01599121,
+          "qubo_energy": -99.05134,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z2",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11010001",
+          "probability": 0.015625,
+          "qubo_energy": -130.874769,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11011001",
+          "probability": 0.01513672,
+          "qubo_energy": -102.889495,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "01111001",
+          "probability": 0.0144043,
+          "qubo_energy": -71.217831,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z2",
+            "Z3",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "01011101",
+          "probability": 0.0144043,
+          "qubo_energy": -67.266611,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z4",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "01011100",
+          "probability": 0.01428223,
+          "qubo_energy": -95.10012,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z4",
+            "Z5"
+          ]
+        },
+        {
+          "bitstring": "01011010",
+          "probability": 0.01391602,
+          "qubo_energy": -95.213594,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z4",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "01011000",
+          "probability": 0.0135498,
+          "qubo_energy": -102.777432,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 2,
+      "seed": 42,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00134277,
+      "circuit_depth": 27,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.6436,
+      "eigenvalue": -31.19338572,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        -5.804015,
+        3.563838,
+        3.136495,
+        -1.850757
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11010000",
+          "probability": 0.24145508,
+          "qubo_energy": -138.708278,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11000000",
+          "probability": 0.09814453,
+          "qubo_energy": -123.23031,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1"
+          ]
+        },
+        {
+          "bitstring": "10010000",
+          "probability": 0.08666992,
+          "qubo_energy": -123.42354,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11011000",
+          "probability": 0.05395508,
+          "qubo_energy": -130.723004,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10000000",
+          "probability": 0.0435791,
+          "qubo_energy": -87.945572,
+          "n_stations": 1,
+          "feasible": false,
+          "zones": [
+            "Z0"
+          ]
+        },
+        {
+          "bitstring": "11001000",
+          "probability": 0.02880859,
+          "qubo_energy": -135.245036,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11010010",
+          "probability": 0.02783203,
+          "qubo_energy": -131.14444,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11110000",
+          "probability": 0.02392578,
+          "qubo_energy": -134.982186,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "10011000",
+          "probability": 0.02197266,
+          "qubo_energy": -135.438266,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10001000",
+          "probability": 0.02185059,
+          "qubo_energy": -119.960297,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z4"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 2,
+      "seed": 7,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.04187012,
+      "circuit_depth": 27,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.7847,
+      "eigenvalue": -28.71724306,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        -4.93673,
+        2.824814,
+        -3.481542,
+        -5.903095
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "10101000",
+          "probability": 0.05114746,
+          "qubo_energy": -136.234206,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10110000",
+          "probability": 0.04187012,
+          "qubo_energy": -139.697448,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11100000",
+          "probability": 0.03601074,
+          "qubo_energy": -139.504218,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2"
+          ]
+        },
+        {
+          "bitstring": "11110000",
+          "probability": 0.0333252,
+          "qubo_energy": -134.982186,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "10001000",
+          "probability": 0.03295898,
+          "qubo_energy": -119.960297,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11101000",
+          "probability": 0.02770996,
+          "qubo_energy": -131.518944,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10100000",
+          "probability": 0.02709961,
+          "qubo_energy": -124.21948,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2"
+          ]
+        },
+        {
+          "bitstring": "11001000",
+          "probability": 0.02636719,
+          "qubo_energy": -135.245036,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10001001",
+          "probability": 0.02563477,
+          "qubo_energy": -132.126788,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10100001",
+          "probability": 0.02502441,
+          "qubo_energy": -136.385971,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z7"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 2,
+      "seed": 21,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00634766,
+      "circuit_depth": 27,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.7758,
+      "eigenvalue": -27.68072734,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        0.899894,
+        2.805563,
+        4.694051,
+        5.004961
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "10010000",
+          "probability": 0.15783691,
+          "qubo_energy": -123.42354,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "10011000",
+          "probability": 0.08276367,
+          "qubo_energy": -135.438266,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10001000",
+          "probability": 0.07775879,
+          "qubo_energy": -119.960297,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10000000",
+          "probability": 0.07092285,
+          "qubo_energy": -87.945572,
+          "n_stations": 1,
+          "feasible": false,
+          "zones": [
+            "Z0"
+          ]
+        },
+        {
+          "bitstring": "10010010",
+          "probability": 0.06091309,
+          "qubo_energy": -135.859702,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11010000",
+          "probability": 0.05859375,
+          "qubo_energy": -138.708278,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11000000",
+          "probability": 0.03198242,
+          "qubo_energy": -123.23031,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1"
+          ]
+        },
+        {
+          "bitstring": "10000010",
+          "probability": 0.02697754,
+          "qubo_energy": -120.381734,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10010100",
+          "probability": 0.02331543,
+          "qubo_energy": -135.746228,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z5"
+          ]
+        },
+        {
+          "bitstring": "10010110",
+          "probability": 0.02246094,
+          "qubo_energy": -128.18239,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z5",
+            "Z6"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 2,
+      "seed": 100,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00488281,
+      "circuit_depth": 27,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.8974,
+      "eigenvalue": -18.42749539,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        1.529721,
+        -1.293539,
+        1.084692,
+        2.347692
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "10000110",
+          "probability": 0.02416992,
+          "qubo_energy": -132.704422,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10000010",
+          "probability": 0.02148438,
+          "qubo_energy": -120.381734,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10000011",
+          "probability": 0.02038574,
+          "qubo_energy": -132.548225,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z6",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10000100",
+          "probability": 0.01977539,
+          "qubo_energy": -120.26826,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z5"
+          ]
+        },
+        {
+          "bitstring": "11000010",
+          "probability": 0.01818848,
+          "qubo_energy": -135.666472,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10001010",
+          "probability": 0.01745605,
+          "qubo_energy": -132.39646,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z4",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10000101",
+          "probability": 0.01611328,
+          "qubo_energy": -132.434751,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10000001",
+          "probability": 0.01550293,
+          "qubo_energy": -120.112063,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10001001",
+          "probability": 0.01525879,
+          "qubo_energy": -132.126788,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10001100",
+          "probability": 0.01452637,
+          "qubo_energy": -132.282985,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z4",
+            "Z5"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 3,
+      "seed": 42,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.0098877,
+      "circuit_depth": 37,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.905,
+      "eigenvalue": -22.75331953,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        7.597272,
+        5.887661,
+        -1.122633,
+        -2.910626,
+        2.289018,
+        0.292126
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11100010",
+          "probability": 0.0748291,
+          "qubo_energy": -131.94038,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10100110",
+          "probability": 0.07421875,
+          "qubo_energy": -128.97833,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10100010",
+          "probability": 0.06726074,
+          "qubo_energy": -136.655642,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11100110",
+          "probability": 0.05944824,
+          "qubo_energy": -104.263068,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10000010",
+          "probability": 0.03381348,
+          "qubo_energy": -120.381734,
+          "n_stations": 2,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11000010",
+          "probability": 0.03125,
+          "qubo_energy": -135.666472,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "10000110",
+          "probability": 0.02697754,
+          "qubo_energy": -132.704422,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11110010",
+          "probability": 0.02294922,
+          "qubo_energy": -107.418348,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11000110",
+          "probability": 0.02282715,
+          "qubo_energy": -127.98916,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11100100",
+          "probability": 0.0222168,
+          "qubo_energy": -131.826906,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z5"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 3,
+      "seed": 7,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00305176,
+      "circuit_depth": 37,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.9148,
+      "eigenvalue": -9.56945843,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        -4.947806,
+        -2.244725,
+        3.116843,
+        -4.556962,
+        6.327538,
+        0.828327
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "10100101",
+          "probability": 0.06555176,
+          "qubo_energy": -128.708659,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10011000",
+          "probability": 0.04125977,
+          "qubo_energy": -135.438266,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "10011011",
+          "probability": 0.03686523,
+          "qubo_energy": -100.040919,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z4",
+            "Z6",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10011001",
+          "probability": 0.03613281,
+          "qubo_energy": -127.604757,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z3",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10101101",
+          "probability": 0.03100586,
+          "qubo_energy": -100.723384,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z4",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "00011001",
+          "probability": 0.02941895,
+          "qubo_energy": -99.659185,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z3",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10111101",
+          "probability": 0.02868652,
+          "qubo_energy": -56.201353,
+          "n_stations": 6,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z3",
+            "Z4",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10100001",
+          "probability": 0.02844238,
+          "qubo_energy": -136.385971,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10110101",
+          "probability": 0.0255127,
+          "qubo_energy": -104.186627,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z3",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "10111011",
+          "probability": 0.02478027,
+          "qubo_energy": -56.314827,
+          "n_stations": 6,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z2",
+            "Z3",
+            "Z4",
+            "Z6",
+            "Z7"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 3,
+      "seed": 21,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00048828,
+      "circuit_depth": 37,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.7587,
+      "eigenvalue": -10.28476822,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        2.370971,
+        6.256525,
+        3.19491,
+        -2.680725,
+        -0.815045,
+        2.018829
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11010000",
+          "probability": 0.1048584,
+          "qubo_energy": -138.708278,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "00101111",
+          "probability": 0.10424805,
+          "qubo_energy": -65.213975,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z2",
+            "Z4",
+            "Z5",
+            "Z6",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11010010",
+          "probability": 0.09265137,
+          "qubo_energy": -131.14444,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "00101101",
+          "probability": 0.08239746,
+          "qubo_energy": -92.777813,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z2",
+            "Z4",
+            "Z5",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11010110",
+          "probability": 0.05114746,
+          "qubo_energy": -103.467128,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "00101001",
+          "probability": 0.05065918,
+          "qubo_energy": -100.455125,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z2",
+            "Z4",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11010100",
+          "probability": 0.04980469,
+          "qubo_energy": -131.030966,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z5"
+          ]
+        },
+        {
+          "bitstring": "00101011",
+          "probability": 0.04541016,
+          "qubo_energy": -92.891287,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z2",
+            "Z4",
+            "Z6",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11010011",
+          "probability": 0.02038574,
+          "qubo_energy": -103.310931,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z6",
+            "Z7"
+          ]
+        },
+        {
+          "bitstring": "11010001",
+          "probability": 0.01977539,
+          "qubo_energy": -130.874769,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z7"
+          ]
+        }
+      ]
+    },
+    {
+      "reps": 3,
+      "seed": 100,
+      "best_bitstring": "10110000",
+      "selected_zones": [
+        "Z0",
+        "Z2",
+        "Z3"
+      ],
+      "qubo_energy": -139.697448,
+      "energy_gap": -0.0,
+      "feasible": true,
+      "n_stations": 3,
+      "matches_classical": true,
+      "success_probability": 0.00109863,
+      "circuit_depth": 37,
+      "n_qubits": 8,
+      "shots": 8192,
+      "runtime_s": 0.8824,
+      "eigenvalue": -21.88487378,
+      "optimizer_evals": null,
+      "optimal_parameters": [
+        -1.49924,
+        0.197314,
+        -2.204392,
+        -1.639163,
+        1.607173,
+        1.947349
+      ],
+      "top10_samples": [
+        {
+          "bitstring": "11110000",
+          "probability": 0.15844727,
+          "qubo_energy": -134.982186,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11010000",
+          "probability": 0.09375,
+          "qubo_energy": -138.708278,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3"
+          ]
+        },
+        {
+          "bitstring": "11011000",
+          "probability": 0.07897949,
+          "qubo_energy": -130.723004,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11110010",
+          "probability": 0.07043457,
+          "qubo_energy": -107.418348,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11111000",
+          "probability": 0.05273438,
+          "qubo_energy": -106.996912,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3",
+            "Z4"
+          ]
+        },
+        {
+          "bitstring": "11100000",
+          "probability": 0.0456543,
+          "qubo_energy": -139.504218,
+          "n_stations": 3,
+          "feasible": true,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2"
+          ]
+        },
+        {
+          "bitstring": "11100010",
+          "probability": 0.04284668,
+          "qubo_energy": -131.94038,
+          "n_stations": 4,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11100110",
+          "probability": 0.03015137,
+          "qubo_energy": -104.263068,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11110110",
+          "probability": 0.02893066,
+          "qubo_energy": -59.741036,
+          "n_stations": 6,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z2",
+            "Z3",
+            "Z5",
+            "Z6"
+          ]
+        },
+        {
+          "bitstring": "11011001",
+          "probability": 0.02282715,
+          "qubo_energy": -102.889495,
+          "n_stations": 5,
+          "feasible": false,
+          "zones": [
+            "Z0",
+            "Z1",
+            "Z3",
+            "Z4",
+            "Z7"
+          ]
+        }
+      ]
+    }
+  ],
+  "best_run": {
+    "reps": 1,
+    "seed": 42,
+    "best_bitstring": "10110000",
+    "selected_zones": [
+      "Z0",
+      "Z2",
+      "Z3"
+    ],
+    "qubo_energy": -139.697448,
+    "energy_gap": -0.0,
+    "feasible": true,
+    "n_stations": 3,
+    "matches_classical": true,
+    "success_probability": 0.01135254,
+    "circuit_depth": 17,
+    "n_qubits": 8,
+    "shots": 8192,
+    "runtime_s": 0.5799,
+    "eigenvalue": -24.51494316,
+    "optimizer_evals": null,
+    "optimal_parameters": [
+      -2.668549,
+      1.548579
+    ],
+    "top10_samples": [
+      {
+        "bitstring": "11010000",
+        "probability": 0.08398438,
+        "qubo_energy": -138.708278,
+        "n_stations": 3,
+        "feasible": true,
+        "zones": [
+          "Z0",
+          "Z1",
+          "Z3"
+        ]
+      },
+      {
+        "bitstring": "11011000",
+        "probability": 0.04724121,
+        "qubo_energy": -130.723004,
+        "n_stations": 4,
+        "feasible": false,
+        "zones": [
+          "Z0",
+          "Z1",
+          "Z3",
+          "Z4"
+        ]
+      },
+      {
+        "bitstring": "11010001",
+        "probability": 0.03442383,
+        "qubo_energy": -130.874769,
+        "n_stations": 4,
+        "feasible": false,
+        "zones": [
+          "Z0",
+          "Z1",
+          "Z3",
+          "Z7"
+        ]
+      },
+      {
+        "bitstring": "11110000",
+        "probability": 0.03063965,
+        "qubo_energy": -134.982186,
+        "n_stations": 4,
+        "feasible": false,
+        "zones": [
+          "Z0",
+          "Z1",
+          "Z2",
+          "Z3"
+        ]
+      },
+      {
+        "bitstring": "11001000",
+        "probability": 0.02526855,
+        "qubo_energy": -135.245036,
+        "n_stations": 3,
+        "feasible": true,
+        "zones": [
+          "Z0",
+          "Z1",
+          "Z4"
+        ]
+      },
+      {
+        "bitstring": "01011000",
+        "probability": 0.02429199,
+        "qubo_energy": -102.777432,
+        "n_stations": 3,
+        "feasible": true,
+        "zones": [
+          "Z1",
+          "Z3",
+          "Z4"
+        ]
+      },
+      {
+        "bitstring": "11010100",
+        "probability": 0.02307129,
+        "qubo_energy": -131.030966,
+        "n_stations": 4,
+        "feasible": false,
+        "zones": [
+          "Z0",
+          "Z1",
+          "Z3",
+          "Z5"
+        ]
+      },
+      {
+        "bitstring": "01010000",
+        "probability": 0.02258301,
+        "qubo_energy": -90.762706,
+        "n_stations": 2,
+        "feasible": false,
+        "zones": [
+          "Z1",
+          "Z3"
+        ]
+      },
+      {
+        "bitstring": "11000000",
+        "probability": 0.02111816,
+        "qubo_energy": -123.23031,
+        "n_stations": 2,
+        "feasible": false,
+        "zones": [
+          "Z0",
+          "Z1"
+        ]
+      },
+      {
+        "bitstring": "01010001",
+        "probability": 0.01940918,
+        "qubo_energy": -102.929197,
+        "n_stations": 3,
+        "feasible": true,
+        "zones": [
+          "Z1",
+          "Z3",
+          "Z7"
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "overall": {
+      "n_runs": 12,
+      "n_classical_match": 12,
+      "match_rate": 1.0,
+      "n_feasible": 12,
+      "feasibility_rate": 1.0,
+      "mean_success_prob": 0.007395,
+      "best_qubo_energy": -139.697448,
+      "best_energy_gap": -0.0
+    },
+    "by_reps": {
+      "1": {
+        "n_runs": 4,
+        "n_classical_match": 4,
+        "match_rate": 1.0,
+        "n_feasible": 4,
+        "feasibility_rate": 1.0,
+        "mean_success_prob": 0.004944,
+        "mean_energy_gap": 0.0,
+        "mean_circuit_depth": 17.0,
+        "mean_runtime_s": 0.5418
+      },
+      "2": {
+        "n_runs": 4,
+        "n_classical_match": 4,
+        "match_rate": 1.0,
+        "n_feasible": 4,
+        "feasibility_rate": 1.0,
+        "mean_success_prob": 0.013611,
+        "mean_energy_gap": 0.0,
+        "mean_circuit_depth": 27.0,
+        "mean_runtime_s": 0.7754
+      },
+      "3": {
+        "n_runs": 4,
+        "n_classical_match": 4,
+        "match_rate": 1.0,
+        "n_feasible": 4,
+        "feasibility_rate": 1.0,
+        "mean_success_prob": 0.003632,
+        "mean_energy_gap": 0.0,
+        "mean_circuit_depth": 37.0,
+        "mean_runtime_s": 0.8652
+      }
+    }
+  },
+  "validation": {
+    "classical_optimum_zones": [
+      "Z0",
+      "Z2",
+      "Z3"
+    ],
+    "classical_optimum_energy": -139.697448,
+    "qaoa_ever_matches": true,
+    "qaoa_always_matches": true,
+    "qaoa_always_feasible": true,
+    "best_energy_gap_to_opt": -0.0,
+    "notes": "success_probability = fraction of shots landing on the exact global optimum bitstring 10110000 (Z0+Z2+Z3, E=-139.697448). energy_gap = run_energy - classical_optimum_energy; 0.0 means exact match."
+  }
+}
