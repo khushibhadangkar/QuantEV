@@ -4,40 +4,33 @@ import { useState, useCallback } from "react";
 import { runOptimize, ApiClientError } from "@/lib/api";
 import type { OptimizeResponse, AsyncState } from "@/types/api";
 
+export type AppState = AsyncState<OptimizeResponse>;
+
 export function useOptimize() {
-  const [state, setState] = useState<AsyncState<OptimizeResponse>>({
-    status: "idle",
-  });
+  const [state, setState] = useState<AppState>({ status: "idle" });
 
   const run = useCallback(async () => {
     setState({ status: "loading" });
     try {
       const data = await runOptimize({ reps: 1, shots: 2048, seed: 42 });
       console.info(
-        "[QuantEV] Optimization complete — recommended zones:",
+        "[QuantEV] Complete →",
         data.recommendation.selected_zones,
-        `(${data.pipeline_runtime_s.toFixed(1)}s)`,
+        `${data.pipeline_runtime_s.toFixed(1)}s`,
       );
       setState({ status: "success", data });
     } catch (err) {
-      // Always log the full technical error to the console
       if (err instanceof ApiClientError) {
-        console.error(
-          "[QuantEV] Optimization failed:",
-          err.message,
-          err.status != null ? `(HTTP ${err.status})` : "",
-          err.rawDetail ? `\nRaw detail: ${err.rawDetail}` : "",
-        );
+        console.error("[QuantEV] API error:", err.message, err.status, err.rawDetail);
         setState({ status: "error", message: err.message });
       } else if (err instanceof Error) {
-        console.error("[QuantEV] Unexpected error:", err);
+        console.error("[QuantEV] Error:", err);
         setState({ status: "error", message: err.message });
       } else {
-        console.error("[QuantEV] Unknown error:", err);
+        console.error("[QuantEV] Unknown:", err);
         setState({
           status: "error",
-          message:
-            "An unexpected error occurred. Check the browser console for details.",
+          message: "Something went wrong. Check the console for details.",
         });
       }
     }

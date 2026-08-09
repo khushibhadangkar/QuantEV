@@ -2,14 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "QuantEV — Smarter EV Infrastructure",
+  title: "QuantEV — Find Charging Stations Near You",
   description:
-    "AI-powered demand prediction combined with quantum optimization to identify where EV charging stations should be built next.",
-  openGraph: {
-    title: "QuantEV",
-    description: "Find where the next charging stations should go.",
-    type: "website",
-  },
+    "Find the best EV charging locations near you in Shenzhen. Powered by AI demand prediction and quantum optimisation.",
 };
 
 export const viewport: Viewport = {
@@ -18,14 +13,10 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full scroll-smooth">
-      <body className="h-full">{children}</body>
+    <html lang="en" style={{ height: "100%" }}>
+      <body style={{ height: "100%", margin: 0, padding: 0 }}>{children}</body>
     </html>
   );
 }

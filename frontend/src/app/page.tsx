@@ -1,302 +1,504 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useOptimize } from "@/hooks/useOptimize";
+import { SearchBar } from "@/components/SearchBar";
+import { SearchProgress } from "@/components/SearchProgress";
+import { ResultPanel } from "@/components/ResultPanel";
+import { HowItWorks } from "@/components/HowItWorks";
+import type { ChargingMapHandle } from "@/components/ChargingMap";
 
-import { Navbar } from "@/components/Navbar";
-import { Hero } from "@/components/Hero";
-import { MapSection } from "@/components/MapSection";
-import { OptimizationProgress } from "@/components/OptimizationProgress";
-import { ResultHero } from "@/components/ResultHero";
-import { WhySection } from "@/components/WhySection";
-import { TechnicalSection } from "@/components/TechnicalSection";
-import { ErrorState } from "@/components/ErrorState";
-import { Footer } from "@/components/Footer";
+// SSR-safe dynamic import (Leaflet requires window)
+const ChargingMap = dynamic(
+  () => import("@/components/ChargingMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{ width: "100%", height: "100%", background: "#dde4ed" }}
+        className="skeleton"
+      />
+    ),
+  }
+);
 
-// Static candidate zone stubs for the pre-run map display.
-// Coordinates match the API response exactly (from backend candidate_zones.csv).
-// Demand values are 0 because we haven't run the model yet — they are replaced
-// by the real API response after optimization completes.
-const CANDIDATE_ZONE_STUBS = [
-  { label: "Z0", tazid: 1026, longitude: 114.080807, latitude: 22.634883, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-  { label: "Z1", tazid: 746,  longitude: 114.072886, latitude: 22.623009, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-  { label: "Z2", tazid: 716,  longitude: 114.073896, latitude: 22.609345, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-  { label: "Z3", tazid: 965,  longitude: 114.098666, latitude: 22.616885, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-  { label: "Z4", tazid: 706,  longitude: 114.054821, latitude: 22.633648, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-  { label: "Z5", tazid: 745,  longitude: 114.060543, latitude: 22.621869, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-  { label: "Z6", tazid: 744,  longitude: 114.068025, latitude: 22.649986, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-  { label: "Z7", tazid: 737,  longitude: 114.084390, latitude: 22.652124, predicted_demand_kwh_h: 0, qubo_c_value: 0, selected: false },
-];
+type UIPhase =
+  | "idle"          // Map open, search bar waiting
+  | "located"       // User set location, waiting for them to confirm
+  | "searching"     // API in flight + map animations
+  | "result"        // Results showing
+  | "error";        // Error state
 
 export default function Page() {
   const { state, run, reset } = useOptimize();
-  const mapRef = useRef<HTMLDivElement>(null);
-  const resultRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<ChargingMapHandle>(null);
+  const resultScrollRef = useRef<HTMLDivElement>(null);
 
-  const isLoading = state.status === "loading";
-  const isSuccess = state.status === "success";
+  const [phase, setPhase] = useState<UIPhase>("idle");
+  const [userLat, setUserLat] = useState(22.62);
+  const [userLng, setUserLng] = useState(114.075);
+  const [locationName, setLocationName] = useState("Shenzhen");
 
-  function handleExploreClick() {
-    mapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Called when user picks a location from search
+  const handleLocationSelect = useCallback(
+    (lat: number, lng: number, name: string) => {
+      setUserLat(lat);
+      setUserLng(lng);
+      setLocationName(name);
+      setPhase("located");
+      mapRef.current?.setUserLocation(lat, lng);
+    },
+    []
+  );
+
+  // Called when user confirms — kick off search
+  const handleSearch = useCallback(async () => {
+    setPhase("searching");
+    mapRef.current?.startSearchAnimation();
+    await run();
+  }, [run]);
+
+  // Handle state transitions after API resolves
+  const prevStatusRef = useRef(state.status);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  if (state.status !== prevStatusRef.current) {
+    prevStatusRef.current = state.status;
+    if (state.status === "success") {
+      setPhase("result");
+      // Drive map with a microtask so the state flush is committed first
+      Promise.resolve().then(() => {
+        if (state.status === "success") {
+          mapRef.current?.showResults(
+            state.data.recommendation.zone_details,
+            state.data.recommendation.selected_zones,
+          );
+        }
+      });
+      setTimeout(() => {
+        resultScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 900);
+    }
+    if (state.status === "error") {
+      setPhase("error");
+    }
   }
 
-  function handleRunClick() {
-    run();
-    // Small delay so the loading state renders before scrolling
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 50);
-  }
+  // Reset everything
+  const handleReset = useCallback(() => {
+    reset();
+    setPhase("idle");
+    mapRef.current?.resetToIdle();
+  }, [reset]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-white)" }}>
-      <Navbar
-        onRunClick={handleRunClick}
-        isLoading={isLoading}
-        hasResult={isSuccess}
-        onReset={reset}
-      />
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: "white" }}>
 
-      {/* ── IDLE / PRE-RUN ──────────────────────────────────────── */}
-      {state.status === "idle" && (
-        <>
-          <Hero onRunClick={handleRunClick} onExploreClick={handleExploreClick} />
-
-          {/* Pre-run map showing candidate locations */}
-          <div ref={mapRef} id="zones">
-            <MapSection
-              zoneDetails={CANDIDATE_ZONE_STUBS}
-              selectedZones={[]}
-              isResult={false}
-              title="Eight candidate zones across Shenzhen"
-              subtitle="Click a pin to explore a zone. Run the optimisation to see recommendations."
-            />
-          </div>
-
-          {/* Teaser section — what QuantEV does */}
-          <section
+      {/* ── HEADER ─────────────────────────────────────────── */}
+      <header
+        className="glass"
+        style={{
+          position: "fixed",
+          top: 0,
+          insetInline: 0,
+          zIndex: 50,
+          height: "56px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 24px",
+          borderBottom: "1px solid rgba(255,255,255,0.5)",
+        }}
+      >
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div
             style={{
-              padding: "100px 0",
-              background: "var(--color-fog)",
-              borderBottom: "1px solid var(--color-border-subtle)",
+              width: "28px",
+              height: "28px",
+              borderRadius: "50%",
+              background: "var(--color-navy-900)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <div
-              style={{
-                maxWidth: "1120px",
-                margin: "0 auto",
-                padding: "0 32px",
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "80px",
-                alignItems: "center",
-              }}
-              className="teaser-grid"
-            >
-              <div>
-                <p
-                  className="anim-fade-up d-0"
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="6" r="2" fill="white" />
+              <circle cx="6" cy="6" r="4.5" stroke="white" strokeWidth="0.8" fill="none" opacity="0.45" />
+              <circle cx="6" cy="6" r="6" stroke="white" strokeWidth="0.4" fill="none" opacity="0.2" />
+            </svg>
+          </div>
+          <span
+            style={{
+              fontFamily: "Times New Roman, serif",
+              fontSize: "16px",
+              color: "var(--color-ink)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            QuantEV
+          </span>
+        </div>
+
+        {/* Phase indicator */}
+        <div
+          style={{
+            fontFamily: "Times New Roman, serif",
+            fontSize: "13px",
+            color: "var(--color-ink-4)",
+          }}
+        >
+          {phase === "idle" && "Infrastructure Planning · Shenzhen"}
+          {phase === "located" && "Area selected"}
+          {phase === "searching" && "Analysing…"}
+          {phase === "result" && "Recommendation ready"}
+          {phase === "error" && "Analysis failed"}
+        </div>
+
+        {/* Reset (only when not idle) */}
+        {phase !== "idle" && (
+          <button
+            onClick={handleReset}
+            style={{
+              fontFamily: "Times New Roman, serif",
+              fontSize: "13px",
+              color: "var(--color-ink-3)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "6px 10px",
+              borderRadius: "8px",
+              transition: "color 0.15s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-ink)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-ink-3)")}
+          >
+            New analysis
+          </button>
+        )}
+      </header>
+
+      {/* ── MAP + OVERLAY PANEL ────────────────────────────── */}
+      <div style={{ flex: 1, position: "relative", marginTop: "56px" }}>
+
+        {/* Full-bleed map */}
+        <div style={{ position: "absolute", inset: 0 }}>
+          <ChargingMap ref={mapRef} />
+        </div>
+
+        {/* ── LEFT OVERLAY PANEL ───────────────────────────── */}
+        <div
+          style={{
+            position: "absolute",
+            top: "20px",
+            left: "20px",
+            width: "360px",
+            maxWidth: "calc(100vw - 40px)",
+            zIndex: 30,
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
+        >
+
+          {/* ── IDLE: Search bar ─────────────────────────── */}
+          {phase === "idle" && (
+            <div className="anim-fade-in">
+              {/* Welcome card */}
+              <div
+                className="glass"
+                style={{
+                  borderRadius: "20px",
+                  padding: "22px 24px 20px",
+                  marginBottom: "10px",
+                  boxShadow: "0 8px 32px rgba(10,22,40,0.1)",
+                }}
+              >
+                <h1
                   style={{
                     fontFamily: "Times New Roman, serif",
-                    fontSize: "12px",
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "var(--color-ink-4)",
-                    marginBottom: "16px",
-                  }}
-                >
-                  The approach
-                </p>
-                <h2
-                  className="anim-fade-up d-1"
-                  style={{
-                    fontFamily: "Times New Roman, serif",
-                    fontSize: "clamp(28px, 3vw, 42px)",
+                    fontSize: "22px",
                     fontWeight: 400,
-                    letterSpacing: "-0.02em",
+                    letterSpacing: "-0.015em",
                     color: "var(--color-ink)",
-                    marginBottom: "24px",
-                    lineHeight: 1.15,
+                    marginBottom: "6px",
+                    lineHeight: 1.2,
                   }}
                 >
-                  Infrastructure planning,
+                  Find the best location
                   <br />
-                  <em>reimagined.</em>
-                </h2>
+                  <em style={{ color: "var(--color-navy-700)" }}>for new infrastructure</em>
+                </h1>
                 <p
-                  className="anim-fade-up d-2"
                   style={{
                     fontFamily: "Times New Roman, serif",
-                    fontSize: "16px",
+                    fontSize: "13px",
                     color: "var(--color-ink-3)",
-                    lineHeight: 1.7,
-                    marginBottom: "32px",
+                    lineHeight: 1.5,
+                    margin: 0,
                   }}
                 >
-                  Traditional site selection relies on gut feel and spreadsheets.
-                  QuantEV uses real charging demand data, AI forecasting, and a
-                  quantum optimisation algorithm to make that decision objectively —
-                  in seconds.
+                  Select an area in Shenzhen and QuantEV will recommend where to build new EV charging stations based on demand, coverage, and optimisation.
                 </p>
-                <button
-                  onClick={handleRunClick}
-                  style={{
-                    fontFamily: "Times New Roman, serif",
-                    fontSize: "16px",
-                    background: "var(--color-navy-900)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: "12px 28px",
-                    cursor: "pointer",
-                    transition: "opacity 0.2s ease",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-                >
-                  Run the optimisation →
-                </button>
               </div>
 
+              {/* Search bar */}
+              <SearchBar onLocationSelect={handleLocationSelect} />
+            </div>
+          )}
+
+          {/* ── LOCATED: Confirm search ───────────────────── */}
+          {phase === "located" && (
+            <div className="anim-scale-in">
               <div
-                className="anim-fade-up d-2"
-                style={{ display: "flex", flexDirection: "column", gap: "0" }}
+                className="glass"
+                style={{
+                  borderRadius: "20px",
+                  overflow: "hidden",
+                  boxShadow: "0 8px 32px rgba(10,22,40,0.12)",
+                }}
               >
-                {[
-                  {
-                    num: "01",
-                    title: "AI demand prediction",
-                    body:
-                      "Historical EV charging patterns train a model that forecasts demand for each candidate location.",
-                  },
-                  {
-                    num: "02",
-                    title: "Quantum optimisation",
-                    body:
-                      "The placement problem is solved using QAOA — a quantum algorithm that finds the globally optimal configuration.",
-                  },
-                  {
-                    num: "03",
-                    title: "Clear recommendation",
-                    body:
-                      "You see exactly which zones to build in, ranked by predicted impact, on a real map.",
-                  },
-                ].map(({ num, title, body }, i) => (
+                {/* Location confirmed */}
+                <div
+                  style={{
+                    padding: "18px 22px",
+                    borderBottom: "1px solid var(--color-border-subtle)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                  }}
+                >
                   <div
-                    key={num}
                     style={{
-                      display: "flex",
-                      gap: "20px",
-                      padding: "24px 0",
-                      borderBottom:
-                        i < 2
-                          ? "1px solid var(--color-border-subtle)"
-                          : "none",
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      background: "var(--color-navy-900)",
+                      border: "2px solid white",
+                      boxShadow: "0 1px 4px rgba(10,22,40,0.25)",
+                      flexShrink: 0,
                     }}
-                  >
+                  />
+                  <div>
                     <div
                       style={{
                         fontFamily: "Times New Roman, serif",
-                        fontSize: "13px",
-                        color: "var(--color-ink-4)",
-                        minWidth: "28px",
-                        paddingTop: "2px",
+                        fontSize: "14px",
+                        color: "var(--color-ink)",
                       }}
                     >
-                      {num}
+                      {locationName}
                     </div>
-                    <div>
-                      <div
-                        style={{
-                          fontFamily: "Times New Roman, serif",
-                          fontSize: "16px",
-                          color: "var(--color-ink)",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        {title}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "Times New Roman, serif",
-                          fontSize: "14px",
-                          color: "var(--color-ink-3)",
-                          lineHeight: 1.65,
-                        }}
-                      >
-                        {body}
-                      </div>
+                    <div
+                      style={{
+                        fontFamily: "Times New Roman, serif",
+                        fontSize: "11px",
+                        color: "var(--color-ink-4)",
+                      }}
+                    >
+                      {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E · focus area
                     </div>
                   </div>
-                ))}
+                  <button
+                    onClick={() => setPhase("idle")}
+                    style={{
+                      marginLeft: "auto",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--color-ink-4)",
+                      fontFamily: "Times New Roman, serif",
+                      fontSize: "13px",
+                      padding: "4px 8px",
+                    }}
+                  >
+                    Change
+                  </button>
+                </div>
+
+                {/* Find button */}
+                <div style={{ padding: "16px 22px" }}>
+                  <button
+                    onClick={handleSearch}
+                    style={{
+                      width: "100%",
+                      padding: "14px",
+                      borderRadius: "12px",
+                      border: "none",
+                      background: "var(--color-navy-900)",
+                      color: "white",
+                      fontFamily: "Times New Roman, serif",
+                      fontSize: "16px",
+                      letterSpacing: "-0.005em",
+                      cursor: "pointer",
+                      transition: "opacity 0.2s ease, transform 0.15s ease",
+                      boxShadow: "0 4px 16px rgba(10,22,40,0.22)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "0.9";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
+                  >
+                    Find best locations →
+                  </button>
+                </div>
               </div>
             </div>
-          </section>
+          )}
 
-          <style>{`
-            @media (max-width: 768px) {
-              .teaser-grid {
-                grid-template-columns: 1fr !important;
-                gap: 48px !important;
-              }
-            }
-          `}</style>
+          {/* ── SEARCHING: Progress ───────────────────────── */}
+          {phase === "searching" && (
+            <div className="anim-scale-in">
+              <div
+                className="glass"
+                style={{
+                  borderRadius: "20px",
+                  overflow: "hidden",
+                  boxShadow: "0 8px 32px rgba(10,22,40,0.12)",
+                }}
+              >
+                <SearchProgress />
+              </div>
+            </div>
+          )}
 
-          <Footer />
-        </>
-      )}
+          {/* ── RESULT ────────────────────────────────────── */}
+          {phase === "result" && state.status === "success" && (
+            <div className="anim-slide-up" ref={resultScrollRef}>
+              <div
+                className="glass"
+                style={{
+                  borderRadius: "20px",
+                  overflow: "hidden",
+                  boxShadow: "0 12px 48px rgba(10,22,40,0.16)",
+                }}
+              >
+                <ResultPanel
+                  recommendation={state.data.recommendation}
+                  userLat={userLat}
+                  userLng={userLng}
+                  locationName={locationName}
+                  onReset={handleReset}
+                />
+              </div>
+            </div>
+          )}
 
-      {/* ── LOADING ─────────────────────────────────────────────── */}
-      {state.status === "loading" && (
-        <>
-          <div style={{ paddingTop: "64px" }}>
-            <OptimizationProgress />
+          {/* ── ERROR ─────────────────────────────────────── */}
+          {phase === "error" && state.status === "error" && (
+            <div className="anim-scale-in">
+              <div
+                className="glass"
+                style={{
+                  borderRadius: "20px",
+                  padding: "24px",
+                  boxShadow: "0 8px 32px rgba(10,22,40,0.12)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "12px",
+                    background: "var(--color-negative-bg)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "14px",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="6.5" stroke="var(--color-negative)" strokeWidth="1.3" />
+                    <path d="M8 5v3.5" stroke="var(--color-negative)" strokeWidth="1.3" strokeLinecap="round" />
+                    <circle cx="8" cy="11" r="0.75" fill="var(--color-negative)" />
+                  </svg>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "Times New Roman, serif",
+                    fontSize: "17px",
+                    color: "var(--color-ink)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Analysis failed
+                </div>
+                <div
+                  style={{
+                    fontFamily: "Times New Roman, serif",
+                    fontSize: "13px",
+                    color: "var(--color-ink-3)",
+                    lineHeight: 1.6,
+                    marginBottom: "18px",
+                  }}
+                >
+                  {state.message}
+                </div>
+                <button
+                  onClick={handleSearch}
+                  style={{
+                    width: "100%",
+                    padding: "11px",
+                    borderRadius: "10px",
+                    border: "none",
+                    background: "var(--color-navy-900)",
+                    color: "white",
+                    fontFamily: "Times New Roman, serif",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── BOTTOM HINT (idle only) ───────────────────────── */}
+        {phase === "idle" && (
+          <div
+            className="anim-fade-in d-3"
+            style={{
+              position: "absolute",
+              bottom: "32px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 20,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              className="glass"
+              style={{
+                borderRadius: "99px",
+                padding: "8px 18px",
+                boxShadow: "0 4px 20px rgba(10,22,40,0.1)",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "Times New Roman, serif",
+                  fontSize: "13px",
+                  color: "var(--color-ink-3)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                8 candidate zones · select an area to begin
+              </span>
+            </div>
           </div>
-          <Footer />
-        </>
-      )}
+        )}
+      </div>
 
-      {/* ── ERROR ───────────────────────────────────────────────── */}
-      {state.status === "error" && (
-        <>
-          <div style={{ paddingTop: "64px" }}>
-            <ErrorState message={state.message} onRetry={run} />
-          </div>
-          <Footer />
-        </>
-      )}
-
-      {/* ── SUCCESS / RESULT ────────────────────────────────────── */}
-      {state.status === "success" && (
-        <>
-          <div ref={resultRef} style={{ paddingTop: "64px" }}>
-            {/* 1. Result statement */}
-            <ResultHero
-              recommendation={state.data.recommendation}
-              pipelineRuntime={state.data.pipeline_runtime_s}
-            />
-
-            {/* 2. Map — focused on recommended zones */}
-            <MapSection
-              zoneDetails={state.data.recommendation.zone_details}
-              selectedZones={state.data.recommendation.selected_zones}
-              isResult={true}
-              title="Recommended charging locations"
-              subtitle="The optimiser identified these three zones as the highest-impact placement across Shenzhen."
-            />
-
-            {/* 3. Why these locations + demand chart */}
-            <WhySection
-              recommendation={state.data.recommendation}
-              demandPrediction={state.data.demand_prediction}
-            />
-
-            {/* 4. Technical pipeline details */}
-            <TechnicalSection data={state.data} />
-          </div>
-          <Footer />
-        </>
-      )}
+      {/* ── HOW IT WORKS ───────────────────────────────────── */}
+      <HowItWorks data={state.status === "success" ? state.data : undefined} />
     </div>
   );
 }
