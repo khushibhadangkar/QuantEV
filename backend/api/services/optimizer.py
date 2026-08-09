@@ -83,6 +83,12 @@ class _PipelineCache:
     demand_data:   pd.DataFrame = field(default=None)   # 8-zone parquet subset
     feature_frame: pd.DataFrame = field(default=None)   # build_features output
     test_frame:    pd.DataFrame = field(default=None)   # chronological test split
+    # Pre-extracted numpy arrays — immune to PyArrow allocator corruption
+    # that can occur after Qiskit C-extension imports on the 2nd+ request.
+    X_test_np:     Any   = field(default=None)   # np.ndarray (n_samples, n_features)
+    test_zone_ids: Any   = field(default=None)   # np.ndarray of zone_id per row
+    test_split_start: str = field(default="")
+    test_split_end:   str = field(default="")
     model_metrics: dict = field(default_factory=dict)
     zones_df:      pd.DataFrame = field(default=None)   # candidate_zones.csv
     ready:         bool = field(default=False)
@@ -119,14 +125,51 @@ def _load_cache() -> None:
     _cache.model_metrics = json.loads(_METRICS_JSON.read_text())
 
     log.info("Loading demand_hourly.parquet (candidate zones only) …")
-    df_all = pd.read_parquet(_PARQUET)
+    # Use numpy_nullable backend to avoid PyArrow-backed dtypes that can break
+    # after Qiskit C-extension imports (pyarrow.lib.ArrowException on 2nd request).
+    try:
+        df_all = pd.read_parquet(_PARQUET, dtype_backend="numpy_nullable")
+    except TypeError:
+        # Older pandas versions that don't support dtype_backend
+        df_all = pd.read_parquet(_PARQUET)
     _cache.demand_data = df_all[df_all["zone_id"].isin(_CANDIDATE_TAZIDS)].copy()
 
     log.info("Building feature matrix …")
     _cache.feature_frame = build_features(_cache.demand_data)
 
     log.info("Applying chronological split …")
-    _, _, _cache.test_frame = chronological_split(_cache.feature_frame)
+    _, _, test_frame_raw = chronological_split(_cache.feature_frame)
+
+    # Materialise all columns as concrete numpy/Python types.
+    # PyArrow-backed columns (from parquet via pandas ≥ 2 with ArrowDtype backend)
+    # can become invalid after Qiskit C-extensions are imported on the first
+    # request, causing pyarrow.lib.ArrowException on subsequent requests.
+    # Converting to plain dtypes here makes the cached frame safe across calls.
+    _cache.test_frame = test_frame_raw.copy()
+    # Reset the column Index to plain Python strings (guards against Arrow-backed Index)
+    _cache.test_frame.columns = [str(c) for c in _cache.test_frame.columns]
+    # Convert any ArrowDtype-backed Series to standard numpy dtypes
+    for col in _cache.test_frame.columns:
+        ser = _cache.test_frame[col]
+        dtype_str = str(ser.dtype)
+        if "arrow" in dtype_str.lower() or hasattr(ser.dtype, "pyarrow_dtype"):
+            try:
+                _cache.test_frame[col] = ser.to_numpy(dtype=object if ser.dtype == object else None)
+            except Exception:
+                _cache.test_frame[col] = ser.astype(object)
+    log.info("test_frame dtypes after materialisation: %s", _cache.test_frame.dtypes.to_dict())
+
+    # Pre-extract numpy arrays from the DataFrame immediately, before any
+    # Qiskit import can interfere.  _predict_demand will use these directly.
+    _cache.X_test_np     = _cache.test_frame[FEATURE_COLS].to_numpy(dtype=float)
+    _cache.test_zone_ids = _cache.test_frame["zone_id"].to_numpy()
+    _cache.test_split_start = str(_cache.test_frame["time"].min())
+    _cache.test_split_end   = str(_cache.test_frame["time"].max())
+    log.info(
+        "Pre-extracted X_test_np shape=%s, zone_ids=%d unique",
+        _cache.X_test_np.shape,
+        len(set(_cache.test_zone_ids)),
+    )
 
     log.info("Loading candidate zones CSV …")
     _cache.zones_df = pd.read_csv(_ZONES_CSV)
@@ -134,10 +177,10 @@ def _load_cache() -> None:
     _cache.ready = True
     log.info(
         "Cache ready — test split: %s → %s, %d rows, %d zones",
-        _cache.test_frame["time"].min(),
-        _cache.test_frame["time"].max(),
-        len(_cache.test_frame),
-        _cache.test_frame["zone_id"].nunique(),
+        _cache.test_split_start,
+        _cache.test_split_end,
+        len(_cache.X_test_np),
+        len(set(_cache.test_zone_ids)),
     )
 
 
@@ -157,27 +200,32 @@ def _predict_demand() -> tuple[dict[str, float], dict]:
     """
     _load_cache()
 
-    test_df = _cache.test_frame
-    X_test  = test_df[FEATURE_COLS].to_numpy(dtype=float)
+    # Use the pre-extracted numpy arrays (populated at cache load time, before
+    # any Qiskit import).  This avoids the PyArrow allocator corruption that
+    # causes ArrowException on the 2nd+ request when the DataFrame is re-accessed
+    # after Qiskit C-extensions have been loaded.
+    X_test = _cache.X_test_np
 
-    t0    = time.perf_counter()
+    t0     = time.perf_counter()
     y_pred = _cache.pipeline.predict(X_test)
     pred_ms = (time.perf_counter() - t0) * 1000
 
-    frame        = test_df.copy()
-    frame["pred"] = y_pred
-    per_zone      = frame.groupby("zone_id")["pred"].mean()
-
+    # Aggregate per zone using the pre-extracted zone_id array
+    zone_ids = _cache.test_zone_ids
     demand_by_label: dict[str, float] = {}
-    for lbl in ["Z0", "Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "Z7"]:
-        demand_by_label[lbl] = round(float(per_zone[_LABEL_TO_TAZID[lbl]]), 4)
+    for lbl, tazid in _LABEL_TO_TAZID.items():
+        mask = zone_ids == tazid
+        if mask.any():
+            demand_by_label[lbl] = round(float(y_pred[mask].mean()), 4)
+        else:
+            demand_by_label[lbl] = 0.0
 
     ai_meta = {
         "model":             _cache.model_metrics.get("model", "RandomForestRegressor"),
         "test_r2":           _cache.model_metrics.get("test_metrics", {}).get("r2"),
         "test_mae":          _cache.model_metrics.get("test_metrics", {}).get("mae"),
-        "test_split_start":  str(test_df["time"].min()),
-        "test_split_end":    str(test_df["time"].max()),
+        "test_split_start":  _cache.test_split_start,
+        "test_split_end":    _cache.test_split_end,
         "prediction_time_ms": round(pred_ms, 2),
         "predicted_demand":  demand_by_label,
     }

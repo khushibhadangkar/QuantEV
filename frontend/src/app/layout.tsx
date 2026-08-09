@@ -1,23 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
 export const metadata: Metadata = {
-  title: "QuantEV — Quantum EV Charging Optimizer",
+  title: "QuantEV — Smarter EV Infrastructure",
   description:
-    "AI-driven demand prediction meets quantum optimization. Identify the highest-impact EV charging locations with QAOA-powered intelligence.",
-  keywords: ["EV charging", "quantum computing", "QAOA", "optimization", "AI"],
+    "AI-powered demand prediction combined with quantum optimization to identify where EV charging stations should be built next.",
+  openGraph: {
+    title: "QuantEV",
+    description: "Find where the next charging stations should go.",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f5f6f8",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
 };
@@ -28,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`}>
-      <body className="h-full antialiased">{children}</body>
+    <html lang="en" className="h-full scroll-smooth">
+      <body className="h-full">{children}</body>
     </html>
   );
 }
