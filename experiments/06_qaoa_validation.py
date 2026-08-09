@@ -78,7 +78,7 @@ CLASSICAL_OPTIMUM_BITS   = "10110000"   # q0=Z0 leftmost
 # ── Validation grid ───────────────────────────────────────────────────────────
 DEFAULT_REPS_LIST  = [1, 2, 3]
 DEFAULT_SEEDS_LIST = [42, 7, 21, 100]
-DEFAULT_SHOTS      = 8192
+DEFAULT_SHOTS      = 2048
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ def run_one(
 
     qaoa = QAOA(
         sampler=sampler,
-        optimizer=COBYLA(maxiter=500, rhobeg=np.pi / 4, tol=1e-6),
+        optimizer=COBYLA(maxiter=50, rhobeg=np.pi / 4, tol=1e-6),
         reps=reps,
         pass_manager=pm,
     )
