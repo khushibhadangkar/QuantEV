@@ -1,4 +1,5 @@
-# ML model artifacts (large binary files — store with DVC or similar)
+# ML model artifacts — too large for git (300+ MB each).
+# Regenerated at deploy time by build.sh using the committed parquet data.
 models/*.joblib
 models/*.pkl
 models/*.h5
@@ -23,11 +24,13 @@ build/
 .ipynb_checkpoints/
 experiments/*.ipynb~
 
-# Data (large files — use DVC or similar for versioning)
+# Raw station data (large)
 data/raw/*
-data/processed/*
 !data/raw/.gitkeep
-!data/processed/.gitkeep
+
+# Processed data — include small parquet + CSVs used by the API.
+# Exclude the 137 MB demand_hourly.csv (parquet is sufficient).
+data/processed/demand_hourly.csv
 
 # Next.js
 frontend/.next/

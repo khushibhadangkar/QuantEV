@@ -101,11 +101,54 @@ def warm_up() -> None:
     """
     Pre-load the RF pipeline and feature data.  Called once at API startup
     (lifespan handler) so the first real request is fast.
+
+    Raises a clear RuntimeError if model artifacts are missing (e.g. the
+    build.sh training step was skipped) so the Render log shows an actionable
+    message instead of an opaque crash deep inside joblib.
     """
     if _cache.ready:
         return
-    log.info("Pipeline warm-up: loading artefacts …")
-    _load_cache()
+
+    # ── Pre-flight: check that required files exist before attempting to load ──
+    missing: list[str] = []
+    for path, label in [
+        (_PIPELINE_PKL, "models/feature_pipeline.joblib"),
+        (_METRICS_JSON,  "models/metrics.json"),
+        (_PARQUET,       "data/processed/demand_hourly.parquet"),
+        (_ZONES_CSV,     "data/processed/candidate_zones.csv"),
+        (_DIST_CSV,      "data/processed/candidate_distance_matrix.csv"),
+    ]:
+        if not path.exists():
+            missing.append(label)
+
+    if missing:
+        msg = (
+            "QuantEV startup failed — the following required files are missing:\n"
+            + "\n".join(f"  • {f}" for f in missing)
+            + "\n\nThis usually means the Render build step (build.sh) did not run "
+            "or training failed.  Check the build log for errors, or re-deploy "
+            "to trigger a fresh build."
+        )
+        log.critical(msg)
+        raise RuntimeError(msg)
+
+    log.info("Pipeline warm-up: all required files present, loading artefacts …")
+    try:
+        _load_cache()
+    except Exception as exc:
+        # Surface the original error with context so Render logs are useful
+        msg = (
+            f"QuantEV startup failed — could not load pipeline artefacts.\n"
+            f"  Python version : {__import__('sys').version.split()[0]}\n"
+            f"  Error          : {type(exc).__name__}: {exc}\n"
+            f"\n"
+            f"If this is a joblib/pickle compatibility error, the model was likely\n"
+            f"serialised with a different sklearn/numpy version.  Re-run build.sh\n"
+            f"on the same Python version to regenerate the artefacts."
+        )
+        log.critical(msg)
+        raise RuntimeError(msg) from exc
+
     log.info("Pipeline warm-up complete.")
 
 
