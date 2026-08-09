@@ -99,17 +99,44 @@ _cache = _PipelineCache()
 
 def warm_up() -> None:
     """
-    Pre-load the RF pipeline and feature data.  Called once at API startup
-    (lifespan handler) so the first real request is fast.
+    Warm-up is intentionally a no-op on Render free tier.
 
-    Raises a clear RuntimeError if model artifacts are missing (e.g. the
-    build.sh training step was skipped) so the Render log shows an actionable
-    message instead of an opaque crash deep inside joblib.
+    The full pipeline (parquet + feature engineering + model) requires ~390 MB
+    at peak load, which leaves only ~120 MB headroom against the 512 MiB limit.
+    Loading at startup AND serving the first request simultaneously would OOM.
+
+    Instead the cache is populated lazily on the first POST /optimize request.
+    The health endpoint (/api/v1/health) stays fast and memory-free.
+    The first optimize call will be ~3–5 s slower (one-time cost).
+    """
+    if _cache.ready:
+        return
+    log.info(
+        "warm_up() skipped — cache will load lazily on first /optimize request "
+        "(memory-constrained deployment)."
+    )
+
+
+def _load_cache() -> None:
+    """
+    Populate _cache on first call.  NOT thread-safe for concurrent first-requests,
+    but FastAPI workers are single-threaded per process and the worst case is
+    a harmless double load.
+
+    Memory-conscious load order (critical for 512 MiB Render free tier):
+      1. Read parquet with zone filter   → peak +145 MB
+      2. Build features, extract numpy arrays, then DELETE all DataFrames
+      3. THEN load the joblib pipeline   → +100 MB (no longer competing)
+      4. Load tiny CSVs / JSON           → negligible
+    Total peak: ~390 MB, leaving ~120 MB headroom.
     """
     if _cache.ready:
         return
 
-    # ── Pre-flight: check that required files exist before attempting to load ──
+    import gc
+    import joblib
+
+    # ── Pre-flight: verify all required files exist ───────────────────────────
     missing: list[str] = []
     for path, label in [
         (_PIPELINE_PKL, "models/feature_pipeline.joblib"),
@@ -120,99 +147,98 @@ def warm_up() -> None:
     ]:
         if not path.exists():
             missing.append(label)
-
     if missing:
         msg = (
-            "QuantEV startup failed — the following required files are missing:\n"
+            "QuantEV cache load failed — required files missing:\n"
             + "\n".join(f"  • {f}" for f in missing)
-            + "\n\nThis usually means the Render build step (build.sh) did not run "
-            "or training failed.  Check the build log for errors, or re-deploy "
-            "to trigger a fresh build."
+            + "\n\nRe-deploy to trigger build.sh which trains the model."
         )
         log.critical(msg)
         raise RuntimeError(msg)
 
-    log.info("Pipeline warm-up: all required files present, loading artefacts …")
+    # ── Step 1: load parquet filtered to the 8 candidate zones only ──────────
+    # Using filters= pushes the row filter into the parquet reader so the full
+    # 1.19 M-row file is never materialised in Python memory.
+    log.info("Loading demand_hourly.parquet (8 candidate zones, filtered read) …")
     try:
-        _load_cache()
+        df_all = pd.read_parquet(
+            _PARQUET,
+            filters=[("zone_id", "in", _CANDIDATE_TAZIDS)],
+            dtype_backend="numpy_nullable",
+        )
+    except TypeError:
+        # Older pandas: dtype_backend not supported
+        df_all = pd.read_parquet(
+            _PARQUET,
+            filters=[("zone_id", "in", _CANDIDATE_TAZIDS)],
+        )
+    _cache.demand_data = df_all   # keep only if needed; freed below after extraction
+
+    # ── Step 2: feature engineering ───────────────────────────────────────────
+    log.info("Building feature matrix …")
+    _cache.feature_frame = build_features(df_all)
+    del df_all
+    gc.collect()
+
+    # ── Step 3: chronological split ───────────────────────────────────────────
+    log.info("Applying chronological split …")
+    _, _, test_frame_raw = chronological_split(_cache.feature_frame)
+
+    # Materialise columns as concrete numpy/Python types (guards against
+    # PyArrow-backed strings that break after Qiskit C-extension imports).
+    test_frame_raw = test_frame_raw.copy()
+    test_frame_raw.columns = [str(c) for c in test_frame_raw.columns]
+    for col in test_frame_raw.columns:
+        ser = test_frame_raw[col]
+        if "arrow" in str(ser.dtype).lower() or hasattr(ser.dtype, "pyarrow_dtype"):
+            try:
+                test_frame_raw[col] = ser.to_numpy(dtype=object if ser.dtype == object else None)
+            except Exception:
+                test_frame_raw[col] = ser.astype(object)
+    _cache.test_frame = test_frame_raw
+
+    # ── Step 4: extract numpy arrays, then FREE all DataFrames ───────────────
+    # This is the critical step: delete the large DataFrames BEFORE loading the
+    # pipeline so their memory is available for the pipeline load.
+    _cache.X_test_np      = _cache.test_frame[FEATURE_COLS].to_numpy(dtype=float)
+    _cache.test_zone_ids  = _cache.test_frame["zone_id"].to_numpy()
+    _cache.test_split_start = str(_cache.test_frame["time"].min())
+    _cache.test_split_end   = str(_cache.test_frame["time"].max())
+
+    log.info(
+        "X_test_np shape=%s, zone_ids=%d unique",
+        _cache.X_test_np.shape,
+        len(set(_cache.test_zone_ids)),
+    )
+
+    # Free the large DataFrames now — they are no longer needed
+    del _cache.demand_data, _cache.feature_frame, _cache.test_frame
+    _cache.demand_data   = None
+    _cache.feature_frame = None
+    _cache.test_frame    = None
+    gc.collect()
+    log.info("DataFrames freed before pipeline load.")
+
+    # ── Step 5: load the pipeline (now that DataFrames are freed) ────────────
+    log.info("Loading feature_pipeline.joblib …")
+    try:
+        _cache.pipeline = joblib.load(_PIPELINE_PKL)
     except Exception as exc:
-        # Surface the original error with context so Render logs are useful
+        import sys as _sys
         msg = (
-            f"QuantEV startup failed — could not load pipeline artefacts.\n"
-            f"  Python version : {__import__('sys').version.split()[0]}\n"
-            f"  Error          : {type(exc).__name__}: {exc}\n"
-            f"\n"
-            f"If this is a joblib/pickle compatibility error, the model was likely\n"
-            f"serialised with a different sklearn/numpy version.  Re-run build.sh\n"
-            f"on the same Python version to regenerate the artefacts."
+            f"Failed to load pipeline artefact.\n"
+            f"  Python  : {_sys.version.split()[0]}\n"
+            f"  File    : {_PIPELINE_PKL}\n"
+            f"  Error   : {type(exc).__name__}: {exc}\n"
+            f"Likely cause: model was serialised with a different sklearn/numpy "
+            f"version. Re-run build.sh to regenerate."
         )
         log.critical(msg)
         raise RuntimeError(msg) from exc
 
-    log.info("Pipeline warm-up complete.")
-
-
-def _load_cache() -> None:
-    """Populate _cache if not already ready.  NOT thread-safe for concurrent
-    first-requests, but FastAPI workers are single-threaded per process and
-    the worst case is double loading — which is harmless."""
-    if _cache.ready:
-        return
-
-    import joblib
-
-    log.info("Loading feature_pipeline.joblib …")
-    _cache.pipeline = joblib.load(_PIPELINE_PKL)
-
+    # ── Step 6: lightweight artefacts ────────────────────────────────────────
     log.info("Loading model metrics …")
     _cache.model_metrics = json.loads(_METRICS_JSON.read_text())
-
-    log.info("Loading demand_hourly.parquet (candidate zones only) …")
-    # Use numpy_nullable backend to avoid PyArrow-backed dtypes that can break
-    # after Qiskit C-extension imports (pyarrow.lib.ArrowException on 2nd request).
-    try:
-        df_all = pd.read_parquet(_PARQUET, dtype_backend="numpy_nullable")
-    except TypeError:
-        # Older pandas versions that don't support dtype_backend
-        df_all = pd.read_parquet(_PARQUET)
-    _cache.demand_data = df_all[df_all["zone_id"].isin(_CANDIDATE_TAZIDS)].copy()
-
-    log.info("Building feature matrix …")
-    _cache.feature_frame = build_features(_cache.demand_data)
-
-    log.info("Applying chronological split …")
-    _, _, test_frame_raw = chronological_split(_cache.feature_frame)
-
-    # Materialise all columns as concrete numpy/Python types.
-    # PyArrow-backed columns (from parquet via pandas ≥ 2 with ArrowDtype backend)
-    # can become invalid after Qiskit C-extensions are imported on the first
-    # request, causing pyarrow.lib.ArrowException on subsequent requests.
-    # Converting to plain dtypes here makes the cached frame safe across calls.
-    _cache.test_frame = test_frame_raw.copy()
-    # Reset the column Index to plain Python strings (guards against Arrow-backed Index)
-    _cache.test_frame.columns = [str(c) for c in _cache.test_frame.columns]
-    # Convert any ArrowDtype-backed Series to standard numpy dtypes
-    for col in _cache.test_frame.columns:
-        ser = _cache.test_frame[col]
-        dtype_str = str(ser.dtype)
-        if "arrow" in dtype_str.lower() or hasattr(ser.dtype, "pyarrow_dtype"):
-            try:
-                _cache.test_frame[col] = ser.to_numpy(dtype=object if ser.dtype == object else None)
-            except Exception:
-                _cache.test_frame[col] = ser.astype(object)
-    log.info("test_frame dtypes after materialisation: %s", _cache.test_frame.dtypes.to_dict())
-
-    # Pre-extract numpy arrays from the DataFrame immediately, before any
-    # Qiskit import can interfere.  _predict_demand will use these directly.
-    _cache.X_test_np     = _cache.test_frame[FEATURE_COLS].to_numpy(dtype=float)
-    _cache.test_zone_ids = _cache.test_frame["zone_id"].to_numpy()
-    _cache.test_split_start = str(_cache.test_frame["time"].min())
-    _cache.test_split_end   = str(_cache.test_frame["time"].max())
-    log.info(
-        "Pre-extracted X_test_np shape=%s, zone_ids=%d unique",
-        _cache.X_test_np.shape,
-        len(set(_cache.test_zone_ids)),
-    )
 
     log.info("Loading candidate zones CSV …")
     _cache.zones_df = pd.read_csv(_ZONES_CSV)

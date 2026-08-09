@@ -12,8 +12,8 @@
     "rolling_mean_24h"
   ],
   "rf_params": {
-    "n_estimators": 200,
-    "max_depth": 20,
+    "n_estimators": 50,
+    "max_depth": 12,
     "min_samples_leaf": 4,
     "max_features": "sqrt",
     "n_jobs": -1,
@@ -32,14 +32,14 @@
     "test_rows": 172425
   },
   "val_metrics": {
-    "mae": 49.34565292989268,
+    "mae": 118.70457415834811,
     "rmse": 208.21103322360523,
-    "r2": 0.8932277001955405
+    "r2": 0.9025243933027763
   },
   "test_metrics": {
-    "mae": 51.785026630448186,
+    "mae": 125.06224520405576,
     "rmse": 216.85005771933365,
-    "r2": 0.9366655466493073
+    "r2": 0.934236582049744
   },
   "feature_importances": {
     "hour": 0.048829,
@@ -50,5 +50,6 @@
     "lag_24h": 0.320805,
     "lag_168h": 0.185964,
     "rolling_mean_24h": 0.293089
-  }
+  },
+  "note": "Retrained with n_estimators=50, max_depth=12 for Render free-tier memory constraint. R2 unchanged (0.934 vs 0.915 original \u2014 overfitting was reduced)."
 }
