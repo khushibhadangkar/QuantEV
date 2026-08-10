@@ -4,31 +4,23 @@ import { useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useOptimize } from "@/hooks/useOptimize";
 import { SearchBar } from "@/components/SearchBar";
-import { SearchProgress } from "@/components/SearchProgress";
+import { OptimizationSequence } from "@/components/OptimizationSequence";
 import { ResultPanel } from "@/components/ResultPanel";
+import { PlanningControls } from "@/components/PlanningControls";
 import { HowItWorks } from "@/components/HowItWorks";
 import type { ChargingMapHandle } from "@/components/ChargingMap";
 
-// SSR-safe dynamic import (Leaflet requires window)
 const ChargingMap = dynamic(
   () => import("@/components/ChargingMap"),
   {
     ssr: false,
     loading: () => (
-      <div
-        style={{ width: "100%", height: "100%", background: "#dde4ed" }}
-        className="skeleton"
-      />
+      <div style={{ width: "100%", height: "100%", background: "#dde4ed" }} className="skeleton" />
     ),
   }
 );
 
-type UIPhase =
-  | "idle"          // Map open, search bar waiting
-  | "located"       // User set location, waiting for them to confirm
-  | "searching"     // API in flight + map animations
-  | "result"        // Results showing
-  | "error";        // Error state
+type UIPhase = "idle" | "located" | "searching" | "result" | "error";
 
 export default function Page() {
   const { state, run, reset } = useOptimize();
@@ -36,44 +28,51 @@ export default function Page() {
   const resultScrollRef = useRef<HTMLDivElement>(null);
 
   const [phase, setPhase] = useState<UIPhase>("idle");
-  const [userLat, setUserLat] = useState(22.62);
+  const [userLat, setUserLat] = useState(22.625);
   const [userLng, setUserLng] = useState(114.075);
   const [locationName, setLocationName] = useState("Shenzhen");
+  const [stationCount, setStationCount] = useState(3);
+  const [sequenceStep, setSequenceStep] = useState(0);
+  const [activeScenario, setActiveScenario] = useState<number | undefined>(undefined);
 
-  // Called when user picks a location from search
-  const handleLocationSelect = useCallback(
-    (lat: number, lng: number, name: string) => {
-      setUserLat(lat);
-      setUserLng(lng);
-      setLocationName(name);
-      setPhase("located");
-      mapRef.current?.setUserLocation(lat, lng);
-    },
-    []
-  );
+  const handleLocationSelect = useCallback((lat: number, lng: number, name: string) => {
+    setUserLat(lat);
+    setUserLng(lng);
+    setLocationName(name);
+    setPhase("located");
+    mapRef.current?.setUserLocation(lat, lng);
+  }, []);
 
-  // Called when user confirms — kick off search
   const handleSearch = useCallback(async () => {
     setPhase("searching");
-    mapRef.current?.startSearchAnimation();
-    await run();
+    setSequenceStep(0);
+    // Run the optimization sequence animation in parallel with the API call
+    // We drive the sequence steps manually via the map
+    const apiPromise = run();
+
+    // The map sequence runs independently; sequence steps 0-4 are paced below
+    // We pass setSequenceStep as the callback
+    // (zones will be empty for animation — we just need the sequence)
+    // Start with a placeholder animation using cached zone positions if available
+    // After API resolves, showResults drives the final map state
+    await apiPromise;
   }, [run]);
 
-  // Handle state transitions after API resolves
+  // Transition on API state change (render-phase ref pattern)
   const prevStatusRef = useRef(state.status);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   if (state.status !== prevStatusRef.current) {
     prevStatusRef.current = state.status;
     if (state.status === "success") {
       setPhase("result");
-      // Drive map with a microtask so the state flush is committed first
-      Promise.resolve().then(() => {
-        if (state.status === "success") {
-          mapRef.current?.showResults(
-            state.data.recommendation.zone_details,
-            state.data.recommendation.selected_zones,
-          );
-        }
+      setActiveScenario(state.data.recommendation.n_stations);
+      // Drive map animation with microtask
+      Promise.resolve().then(async () => {
+        if (state.status !== "success") return;
+        const { zone_details, selected_zones } = state.data.recommendation;
+        // Run the full 5-stage optimization sequence on the map
+        await mapRef.current?.runOptimizationSequence(zone_details);
+        // Then reveal the results
+        mapRef.current?.showResults(zone_details, selected_zones);
       });
       setTimeout(() => {
         resultScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -84,124 +83,86 @@ export default function Page() {
     }
   }
 
-  // Reset everything
   const handleReset = useCallback(() => {
     reset();
     setPhase("idle");
+    setSequenceStep(0);
+    setActiveScenario(undefined);
     mapRef.current?.resetToIdle();
   }, [reset]);
 
+  const handleScenarioChange = useCallback((k: number) => {
+    setActiveScenario(k);
+    if (state.status !== "success") return;
+    const { zone_details, selected_zones } = state.data.recommendation;
+    // Show a proportional selection for scenario comparison
+    // Sort all zones by demand and take top-k as the scenario preview
+    const sorted = [...zone_details].sort(
+      (a, b) => b.predicted_demand_kwh_h - a.predicted_demand_kwh_h
+    );
+    const scenarioSelected = sorted.slice(0, k).map((z) => z.label);
+    mapRef.current?.showScenario(zone_details, scenarioSelected, k);
+  }, [state]);
+
+  // Phase label for header
+  const phaseLabel: Record<UIPhase, string> = {
+    idle: "Infrastructure Planning · Shenzhen",
+    located: "Planning area selected",
+    searching: "Analysing…",
+    result: "Recommendation ready",
+    error: "Analysis failed",
+  };
+
   return (
-    // The page is a full-viewport column. The map section takes up all remaining
-    // space after the 56px fixed header. It uses calc() for an explicit height
-    // so absolute-positioned children (the Leaflet container) have a real
-    // pixel dimension to resolve against — flex:1 alone is not enough.
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "white" }}>
 
       {/* ── HEADER ─────────────────────────────────────────── */}
       <header
         className="glass"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          height: "56px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 24px",
-          borderBottom: "1px solid rgba(255,255,255,0.5)",
-        }}
+        style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, height: "56px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", borderBottom: "1px solid rgba(255,255,255,0.5)" }}
       >
-        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "50%",
-              background: "var(--color-navy-900)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
+          <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "var(--color-navy-900)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="2" fill="white" />
               <circle cx="6" cy="6" r="4.5" stroke="white" strokeWidth="0.8" fill="none" opacity="0.45" />
               <circle cx="6" cy="6" r="6" stroke="white" strokeWidth="0.4" fill="none" opacity="0.2" />
             </svg>
           </div>
-          <span
-            style={{
-              fontFamily: "Times New Roman, serif",
-              fontSize: "16px",
-              color: "var(--color-ink)",
-              letterSpacing: "-0.01em",
-            }}
-          >
+          <span style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink)", letterSpacing: "-0.01em" }}>
             QuantEV
           </span>
         </div>
 
-        {/* Phase indicator */}
-        <div
-          style={{
-            fontFamily: "Times New Roman, serif",
-            fontSize: "13px",
-            color: "var(--color-ink-4)",
-          }}
-        >
-          {phase === "idle" && "Infrastructure Planning · Shenzhen"}
-          {phase === "located" && "Planning area selected"}
-          {phase === "searching" && "Analysing…"}
-          {phase === "result" && "Recommendation ready"}
-          {phase === "error" && "Analysis failed"}
+        <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-4)" }}>
+          {phaseLabel[phase]}
         </div>
 
-        {/* Reset (only when not idle) */}
         {phase !== "idle" && (
           <button
             onClick={handleReset}
-            style={{
-              fontFamily: "Times New Roman, serif",
-              fontSize: "13px",
-              color: "var(--color-ink-3)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "6px 10px",
-              borderRadius: "8px",
-              transition: "color 0.15s ease",
-            }}
+            style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-3)", background: "none", border: "none", cursor: "pointer", padding: "6px 10px", borderRadius: "8px", transition: "color 0.15s ease" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-ink)")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-ink-3)")}
           >
             New analysis
           </button>
         )}
+        {phase === "idle" && <div style={{ width: "80px" }} />}
       </header>
 
       {/* ── MAP + OVERLAY PANEL ────────────────────────────── */}
-      {/* Explicit height so absolute children have a real pixel dimension.
-          flex:1 alone does not give absolute-positioned children anything to
-          resolve against — this is the root cause of the blank map. */}
-      <div style={{
-        position: "relative",
-        height: "calc(100vh - 56px)",
-        marginTop: "56px",
-        flexShrink: 0,
-      }}>
+      <div style={{ position: "relative", height: "calc(100vh - 56px)", marginTop: "56px", flexShrink: 0 }}>
 
-        {/* Full-bleed map — fills the entire section */}
+        {/* Full-bleed map */}
         <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-          <ChargingMap ref={mapRef} />
+          <ChargingMap
+            ref={mapRef}
+            onSequenceStep={setSequenceStep}
+          />
         </div>
 
-        {/* ── LEFT OVERLAY PANEL ───────────────────────────── */}
+        {/* ── LEFT OVERLAY PANEL ─────────────────────────── */}
         <div
           style={{
             position: "absolute",
@@ -213,171 +174,83 @@ export default function Page() {
             display: "flex",
             flexDirection: "column",
             gap: "10px",
+            maxHeight: "calc(100vh - 100px)",
+            overflowY: "auto",
           }}
         >
 
-          {/* ── IDLE: Search bar ─────────────────────────── */}
+          {/* ── IDLE ──────────────────────────────────────── */}
           {phase === "idle" && (
             <div className="anim-fade-in">
-              {/* Welcome card */}
-              <div
-                className="glass"
-                style={{
-                  borderRadius: "20px",
-                  padding: "22px 24px 20px",
-                  marginBottom: "10px",
-                  boxShadow: "0 8px 32px rgba(10,22,40,0.1)",
-                }}
-              >
-                <h1
-                  style={{
-                    fontFamily: "Times New Roman, serif",
-                    fontSize: "22px",
-                    fontWeight: 400,
-                    letterSpacing: "-0.015em",
-                    color: "var(--color-ink)",
-                    marginBottom: "6px",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Find the best locations for
-                  <br />
-                  <em style={{ color: "var(--color-navy-700)" }}>new charging infrastructure</em>
-                </h1>
-                <p
-                  style={{
-                    fontFamily: "Times New Roman, serif",
-                    fontSize: "13px",
-                    color: "var(--color-ink-3)",
-                    lineHeight: 1.5,
-                    margin: 0,
-                  }}
-                >
-                  Select a planning area in Shenzhen to analyse predicted EV demand
-                  and identify the optimal sites for new charging stations.
-                </p>
+              <div className="glass" style={{ borderRadius: "20px", marginBottom: "10px", boxShadow: "0 8px 32px rgba(10,22,40,0.1)", overflow: "hidden" }}>
+                <div style={{ padding: "20px 22px 16px" }}>
+                  <h1 style={{ fontFamily: "Times New Roman, serif", fontSize: "21px", fontWeight: 400, letterSpacing: "-0.015em", color: "var(--color-ink)", marginBottom: "6px", lineHeight: 1.2 }}>
+                    Find the best locations for
+                    <br /><em style={{ color: "var(--color-navy-700)" }}>new charging infrastructure</em>
+                  </h1>
+                  <p style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-3)", lineHeight: 1.5, margin: 0 }}>
+                    Select a planning area, set your station budget, and let AI and quantum optimisation identify the ideal sites.
+                  </p>
+                </div>
+                <PlanningControls
+                  stationCount={stationCount}
+                  onStationCountChange={setStationCount}
+                />
               </div>
-
-              {/* Search bar */}
               <SearchBar onLocationSelect={handleLocationSelect} />
             </div>
           )}
 
-          {/* ── LOCATED: Confirm search ───────────────────── */}
+          {/* ── LOCATED ───────────────────────────────────── */}
           {phase === "located" && (
             <div className="anim-scale-in">
-              <div
-                className="glass"
-                style={{
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                  boxShadow: "0 8px 32px rgba(10,22,40,0.12)",
-                }}
-              >
-                {/* Location confirmed */}
-                <div
-                  style={{
-                    padding: "18px 22px",
-                    borderBottom: "1px solid var(--color-border-subtle)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "10px",
-                      height: "10px",
-                      borderRadius: "50%",
-                      background: "var(--color-navy-900)",
-                      border: "2px solid white",
-                      boxShadow: "0 1px 4px rgba(10,22,40,0.25)",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div>
-                    <div
-                      style={{
-                        fontFamily: "Times New Roman, serif",
-                        fontSize: "14px",
-                        color: "var(--color-ink)",
-                      }}
-                    >
-                      {locationName}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "Times New Roman, serif",
-                        fontSize: "11px",
-                        color: "var(--color-ink-4)",
-                      }}
-                    >
-                      Planning area · {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E
+              <div className="glass" style={{ borderRadius: "20px", overflow: "hidden", boxShadow: "0 8px 32px rgba(10,22,40,0.12)" }}>
+                {/* Location row */}
+                <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--color-border-subtle)", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "var(--color-navy-900)", border: "2px solid white", boxShadow: "0 1px 4px rgba(10,22,40,0.25)", flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink)" }}>{locationName}</div>
+                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)" }}>
+                      {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E
                     </div>
                   </div>
-                  <button
-                    onClick={() => setPhase("idle")}
-                    style={{
-                      marginLeft: "auto",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "var(--color-ink-4)",
-                      fontFamily: "Times New Roman, serif",
-                      fontSize: "13px",
-                      padding: "4px 8px",
-                    }}
-                  >
+                  <button onClick={() => setPhase("idle")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-ink-4)", fontFamily: "Times New Roman, serif", fontSize: "13px", padding: "4px 8px" }}>
                     Change
                   </button>
                 </div>
 
+                {/* Planning controls */}
+                <PlanningControls
+                  stationCount={stationCount}
+                  onStationCountChange={setStationCount}
+                />
+
                 {/* Analyse button */}
-                <div style={{ padding: "16px 22px" }}>
+                <div style={{ padding: "14px 22px" }}>
                   <button
                     onClick={handleSearch}
                     style={{
-                      width: "100%",
-                      padding: "14px",
-                      borderRadius: "12px",
-                      border: "none",
-                      background: "var(--color-navy-900)",
-                      color: "white",
-                      fontFamily: "Times New Roman, serif",
-                      fontSize: "16px",
-                      letterSpacing: "-0.005em",
-                      cursor: "pointer",
-                      transition: "opacity 0.2s ease, transform 0.15s ease",
+                      width: "100%", padding: "13px", borderRadius: "12px", border: "none",
+                      background: "var(--color-navy-900)", color: "white",
+                      fontFamily: "Times New Roman, serif", fontSize: "15px", letterSpacing: "-0.005em",
+                      cursor: "pointer", transition: "opacity 0.2s ease, transform 0.15s ease",
                       boxShadow: "0 4px 16px rgba(10,22,40,0.22)",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = "0.9";
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = "1";
-                      e.currentTarget.style.transform = "translateY(0)";
-                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}
                   >
-                    Analyse infrastructure →
+                    Run infrastructure analysis →
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── SEARCHING: Progress ───────────────────────── */}
+          {/* ── SEARCHING ─────────────────────────────────── */}
           {phase === "searching" && (
             <div className="anim-scale-in">
-              <div
-                className="glass"
-                style={{
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                  boxShadow: "0 8px 32px rgba(10,22,40,0.12)",
-                }}
-              >
-                <SearchProgress />
+              <div className="glass" style={{ borderRadius: "20px", overflow: "hidden", boxShadow: "0 8px 32px rgba(10,22,40,0.12)" }}>
+                <OptimizationSequence currentStep={sequenceStep} />
               </div>
             </div>
           )}
@@ -385,20 +258,15 @@ export default function Page() {
           {/* ── RESULT ────────────────────────────────────── */}
           {phase === "result" && state.status === "success" && (
             <div className="anim-slide-up" ref={resultScrollRef}>
-              <div
-                className="glass"
-                style={{
-                  borderRadius: "20px",
-                  overflow: "hidden",
-                  boxShadow: "0 12px 48px rgba(10,22,40,0.16)",
-                }}
-              >
+              <div className="glass" style={{ borderRadius: "20px", overflow: "hidden", boxShadow: "0 12px 48px rgba(10,22,40,0.16)" }}>
                 <ResultPanel
-                  recommendation={state.data.recommendation}
+                  data={state.data}
                   userLat={userLat}
                   userLng={userLng}
                   locationName={locationName}
                   onReset={handleReset}
+                  onScenarioChange={handleScenarioChange}
+                  activeScenario={activeScenario}
                 />
               </div>
             </div>
@@ -407,66 +275,21 @@ export default function Page() {
           {/* ── ERROR ─────────────────────────────────────── */}
           {phase === "error" && state.status === "error" && (
             <div className="anim-scale-in">
-              <div
-                className="glass"
-                style={{
-                  borderRadius: "20px",
-                  padding: "24px",
-                  boxShadow: "0 8px 32px rgba(10,22,40,0.12)",
-                }}
-              >
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "12px",
-                    background: "var(--color-negative-bg)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: "14px",
-                  }}
-                >
+              <div className="glass" style={{ borderRadius: "20px", padding: "24px", boxShadow: "0 8px 32px rgba(10,22,40,0.12)" }}>
+                <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--color-negative-bg)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "14px" }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <circle cx="8" cy="8" r="6.5" stroke="var(--color-negative)" strokeWidth="1.3" />
                     <path d="M8 5v3.5" stroke="var(--color-negative)" strokeWidth="1.3" strokeLinecap="round" />
                     <circle cx="8" cy="11" r="0.75" fill="var(--color-negative)" />
                   </svg>
                 </div>
-                <div
-                  style={{
-                    fontFamily: "Times New Roman, serif",
-                    fontSize: "17px",
-                    color: "var(--color-ink)",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Analysis failed
-                </div>
-                <div
-                  style={{
-                    fontFamily: "Times New Roman, serif",
-                    fontSize: "13px",
-                    color: "var(--color-ink-3)",
-                    lineHeight: 1.6,
-                    marginBottom: "18px",
-                  }}
-                >
+                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "17px", color: "var(--color-ink)", marginBottom: "8px" }}>Analysis failed</div>
+                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-3)", lineHeight: 1.6, marginBottom: "18px" }}>
                   {state.message}
                 </div>
                 <button
                   onClick={handleSearch}
-                  style={{
-                    width: "100%",
-                    padding: "11px",
-                    borderRadius: "10px",
-                    border: "none",
-                    background: "var(--color-navy-900)",
-                    color: "white",
-                    fontFamily: "Times New Roman, serif",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  style={{ width: "100%", padding: "11px", borderRadius: "10px", border: "none", background: "var(--color-navy-900)", color: "white", fontFamily: "Times New Roman, serif", fontSize: "14px", cursor: "pointer" }}
                 >
                   Try again
                 </button>
@@ -475,37 +298,39 @@ export default function Page() {
           )}
         </div>
 
-        {/* ── BOTTOM HINT (idle only) ───────────────────────── */}
+        {/* ── BOTTOM LEGEND ──────────────────────────────── */}
         {phase === "idle" && (
+          <div className="anim-fade-in d-3" style={{ position: "absolute", bottom: "28px", left: "50%", transform: "translateX(-50%)", zIndex: 20, pointerEvents: "none" }}>
+            <div className="glass" style={{ borderRadius: "99px", padding: "7px 16px", boxShadow: "0 4px 20px rgba(10,22,40,0.1)", display: "flex", alignItems: "center", gap: "16px" }}>
+              <span style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-3)", whiteSpace: "nowrap" }}>
+                8 candidate zones · Shenzhen
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── MAP LEGEND (result state) ───────────────────── */}
+        {phase === "result" && (
           <div
-            className="anim-fade-in d-3"
+            className="anim-fade-in"
             style={{
-              position: "absolute",
-              bottom: "32px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 20,
+              position: "absolute", bottom: "28px", right: "60px", zIndex: 20,
               pointerEvents: "none",
             }}
           >
-            <div
-              className="glass"
-              style={{
-                borderRadius: "99px",
-                padding: "8px 18px",
-                boxShadow: "0 4px 20px rgba(10,22,40,0.1)",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "Times New Roman, serif",
-                  fontSize: "13px",
-                  color: "var(--color-ink-3)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                8 candidate zones across Shenzhen
-              </span>
+            <div className="glass" style={{ borderRadius: "12px", padding: "10px 14px", boxShadow: "0 4px 20px rgba(10,22,40,0.1)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {[
+                  { color: "var(--color-navy-900)", border: "2.5px solid white", label: "Recommended site" },
+                  { color: "rgba(10,22,40,0.05)", border: "1.5px dashed rgba(10,22,40,0.2)", label: "Coverage area (1.5 km)" },
+                  { color: "white", border: "1.5px solid rgba(10,22,40,0.25)", label: "Candidate site" },
+                ].map(({ color, border, label }) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: color, border, flexShrink: 0 }} />
+                    <span style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-3)", whiteSpace: "nowrap" }}>{label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
