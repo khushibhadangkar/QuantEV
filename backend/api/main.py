@@ -1,26 +1,26 @@
 """
 EVision — FastAPI application entry point.
 
-Run with:
-    .venv/bin/uvicorn backend.api.main:app --reload --port 8000
+Local:
+.venv/bin/uvicorn backend.api.main:app --reload --port 8000
+
+Production:
+uvicorn backend.api.main:app --host 0.0.0.0 --port $PORT
 """
 
 from contextlib import asynccontextmanager
 
 import pandas as pd
 
-# ── Pandas 3.x compatibility fix ────────────────────────────────────────────
-# Pandas ≥ 3.0 enables future.infer_string=True by default, which makes ALL
-# string columns Arrow-backed (ArrowDtype).  Qiskit-Aer's C/Rust extensions
-# interfere with PyArrow's internal allocator after being imported, causing
-# pyarrow.lib.ArrowException ("Unknown error: Wrapping <ptr> failed") on any
-# subsequent pandas operation that materialises an Arrow-backed string column.
-# Setting this to False restores the pre-3.0 behaviour (plain NumPy object
-# dtype for strings) and is safe for all existing code in this project.
+# ---------------------------------------------------------------------------
+# Pandas 3.x compatibility
+# ---------------------------------------------------------------------------
+
 try:
     pd.options.future.infer_string = False
 except AttributeError:
-    pass   # pandas < 3.0 — option doesn't exist, nothing to do
+    pass
+
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,12 +30,27 @@ from backend.api.routers import optimize
 from backend.api.services.optimizer import warm_up
 
 
+# ---------------------------------------------------------------------------
+# Application lifespan
+# ---------------------------------------------------------------------------
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Pre-warm the pipeline cache at startup so the first request is fast."""
-    warm_up()
+    """
+    Pre-warm the optimization pipeline when the server starts.
+    If warm-up fails, allow the API to start so health checks still work.
+    """
+    try:
+        warm_up()
+    except Exception as exc:
+        print(f"[EVision] Warm-up warning: {exc}")
+
     yield
 
+
+# ---------------------------------------------------------------------------
+# FastAPI application
+# ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="EVision API",
@@ -44,24 +59,41 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # ---------------------------------------------------------------------------
-# CORS — allow the Next.js dev server and any localhost origin during dev
+# CORS
 # ---------------------------------------------------------------------------
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
+
+    # Production Vercel frontend
     allow_origins=[
         "https://quant-ev.vercel.app",
         "http://localhost:3000",
     ],
+
+    # Also allow Vercel preview deployments.
+    allow_origin_regex=r"https://.*\.vercel\.app",
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 # ---------------------------------------------------------------------------
-# Routers
+# API routers
 # ---------------------------------------------------------------------------
-app.include_router(health.router,    prefix="/api/v1", tags=["health"])
-app.include_router(optimize.router,  prefix="/api/v1", tags=["optimization"])
+
+app.include_router(
+    health.router,
+    prefix="/api/v1",
+    tags=["health"],
+)
+
+app.include_router(
+    optimize.router,
+    prefix="/api/v1",
+    tags=["optimization"],
+)
