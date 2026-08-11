@@ -1,97 +1,65 @@
-# EVision — AI + Quantum EV Charging Infrastructure Optimizer
+# QuantEV
 
-> Hackathon project: predict EV charging demand by geographic zone using ML, then use QAOA (and a classical baseline) to determine optimal placement for new charging stations. Results are displayed on an interactive map with a side-by-side solver comparison.
+### AI + Quantum Optimization for EV Charging Infrastructure Planning
 
----
-
-## Stack
-
-| Layer | Technology |
-|---|---|
-| ML / Data | Python 3.11+, Pandas, NumPy, scikit-learn |
-| Quantum | Qiskit 2.x, Qiskit Aer, qiskit-optimization |
-| API | FastAPI, Uvicorn, Pydantic |
-| Frontend | Next.js 16, TypeScript, Tailwind CSS, Recharts, Leaflet |
+> **Where should the next EV charging stations be built?**
+>
+> QuantEV combines machine learning, mathematical optimization, and quantum computing to identify high-impact locations for new EV charging infrastructure based on predicted charging demand, geographic coverage, and spatial relationships between candidate sites.
 
 ---
 
-## Monorepo Structure
+## Overview
 
-```
-EV/
-├── backend/
-│   ├── ai/              # ML demand prediction
-│   ├── optimization/    # Classical optimizer (scipy / greedy)
-│   ├── quantum/         # QAOA via Qiskit + Aer
-│   └── api/             # FastAPI app — routes, schemas, orchestration
-├── data/
-│   ├── raw/             # Source datasets
-│   └── processed/       # Feature-engineered outputs
-├── experiments/         # Jupyter notebooks
-├── frontend/            # Next.js app
-├── docs/                # Architecture notes, API spec
-├── .venv/               # Python virtual environment (not committed)
-├── requirements.txt
-└── pyproject.toml
-```
+EV adoption is growing rapidly, but charging infrastructure cannot simply be expanded everywhere.
 
----
+The real challenge is a **combinatorial infrastructure planning problem**:
 
-## Getting Started
+- Where will charging demand increase?
+- Which areas are underserved?
+- Which candidate locations provide the greatest coverage?
+- How many stations should be deployed?
+- How can infrastructure be distributed efficiently?
+- Which configuration provides the best trade-off between demand coverage and network efficiency?
 
-### Backend
+**QuantEV** approaches this problem as an end-to-end decision intelligence pipeline.
 
-```bash
-# 1. Activate the virtual environment
-source .venv/bin/activate
+It uses a machine-learning model to estimate charging demand and then formulates infrastructure placement as a **Quadratic Unconstrained Binary Optimization (QUBO)** problem. The resulting optimization problem is solved using the **Quantum Approximate Optimization Algorithm (QAOA)** and evaluated against a classical baseline.
 
-# 2. Start the API server
-uvicorn backend.api.main:app --reload --port 8000
-```
-
-Health check: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
-Interactive docs: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-### Frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
-Open: [http://localhost:3000](http://localhost:3000)
+The result is an interactive map-based planning experience that turns complex optimization results into understandable infrastructure recommendations.
 
 ---
 
-## Data Flow (planned)
+## The Core Idea
 
-```
-Raw EV / geo data
-      │
-      ▼
-backend/ai  ──►  demand score per zone  ──►  POST /api/v1/predict
-                                                    │
-                          ┌─────────────────────────┤
-                          ▼                         ▼
-              backend/quantum (QAOA)   backend/optimization (classical)
-                          │                         │
-                          └──────────┬──────────────┘
-                                     ▼
-                            POST /api/v1/optimize
-                                     │
-                                     ▼
-                      frontend — Leaflet map + Recharts comparison
-```
-
----
-
-## Roadmap
-
-- [ ] Ingest and clean EV registration / POI dataset
-- [ ] Train ML demand-prediction model (zone-level)
-- [ ] Formulate QUBO for station placement
-- [ ] Implement QAOA solver (Qiskit Aer statevector)
-- [ ] Implement classical baseline (greedy / scipy)
-- [ ] Wire solvers to FastAPI `/predict` and `/optimize` endpoints
-- [ ] Build Leaflet map + Recharts comparison UI
-- [ ] Benchmarking notebook in `experiments/`
+```text
+                 EV Charging Data
+                        │
+                        ▼
+              ┌──────────────────┐
+              │ Demand Forecasting│
+              │   Random Forest   │
+              └────────┬─────────┘
+                       │
+                       ▼
+              Predicted EV Demand
+                       │
+                       ▼
+             Candidate Site Analysis
+                       │
+                       ▼
+              ┌──────────────────┐
+              │ QUBO Formulation │
+              │ Demand + Distance│
+              │ Coverage + Budget│
+              └────────┬─────────┘
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+       Classical Baseline       QAOA
+              │                 │
+              └────────┬────────┘
+                       ▼
+             Recommended Locations
+                       │
+                       ▼
+             Interactive Map + Impact
