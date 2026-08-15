@@ -308,7 +308,8 @@ def _predict_demand() -> tuple[dict[str, float], dict]:
 
 def _build_qubo_from_predictions(demand_by_label: dict[str, float]) -> QUBOProblem:
     """
-    Write a temporary zones CSV with live predictions and call build_qubo().
+    Build QUBO from live predictions by passing an in-memory DataFrame
+    directly to build_qubo().  No temporary file is created.
     The distance matrix and all other columns are unchanged.
     """
     _load_cache()
@@ -317,12 +318,7 @@ def _build_qubo_from_predictions(demand_by_label: dict[str, float]) -> QUBOProbl
     for lbl, d in demand_by_label.items():
         zones_df.loc[zones_df["label"] == lbl, "mean_pred_kwh"] = d
 
-    tmp_csv = _ZONES_CSV.parent / "_api_qubo_tmp.csv"
-    try:
-        zones_df.to_csv(tmp_csv, index=False)
-        qubo = build_qubo(zones_csv=tmp_csv, dist_csv=_DIST_CSV)
-    finally:
-        tmp_csv.unlink(missing_ok=True)
+    qubo = build_qubo(zones_csv=zones_df, dist_csv=_DIST_CSV)
 
     log.info(
         "QUBO built: n=%d  K=%d  λ=%.1f  E(opt_bits)=%.4f",
