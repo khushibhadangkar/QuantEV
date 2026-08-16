@@ -35,7 +35,6 @@ export default function Page() {
   const [stationCount, setStationCount] = useState(3);
   const [scenario, setScenario] = useState<PlanningScenario>("all_hours");
   const [sequenceStep, setSequenceStep] = useState(0);
-  const [activeScenario, setActiveScenario] = useState<number | undefined>(undefined);
 
   const handleLocationSelect = useCallback((lat: number, lng: number, name: string) => {
     setUserLat(lat);
@@ -66,7 +65,6 @@ export default function Page() {
     prevStatusRef.current = state.status;
     if (state.status === "success") {
       setPhase("result");
-      setActiveScenario(state.data.recommendation.n_stations);
       // Drive map animation with microtask
       Promise.resolve().then(async () => {
         if (state.status !== "success") return;
@@ -89,22 +87,8 @@ export default function Page() {
     reset();
     setPhase("idle");
     setSequenceStep(0);
-    setActiveScenario(undefined);
     mapRef.current?.resetToIdle();
   }, [reset]);
-
-  const handleScenarioChange = useCallback((k: number) => {
-    setActiveScenario(k);
-    if (state.status !== "success") return;
-    const { zone_details, selected_zones } = state.data.recommendation;
-    // Show a proportional selection for scenario comparison
-    // Sort all zones by demand and take top-k as the scenario preview
-    const sorted = [...zone_details].sort(
-      (a, b) => b.predicted_demand_kwh_h - a.predicted_demand_kwh_h
-    );
-    const scenarioSelected = sorted.slice(0, k).map((z) => z.label);
-    mapRef.current?.showScenario(zone_details, scenarioSelected, k);
-  }, [state]);
 
   // Phase label for header
   const phaseLabel: Record<UIPhase, string> = {
@@ -304,8 +288,6 @@ export default function Page() {
                   userLng={userLng}
                   locationName={locationName}
                   onReset={handleReset}
-                  onScenarioChange={handleScenarioChange}
-                  activeScenario={activeScenario}
                 />
               </div>
             </div>

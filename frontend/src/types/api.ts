@@ -78,6 +78,7 @@ export interface SampleEntry {
 export interface ClassicalResult {
   method: string;
   selected_zones: string[];
+  objective_value: number;
   qubo_energy: number;
   feasible: boolean;
   n_stations: number;
@@ -94,6 +95,7 @@ export interface QAOAResult {
   selected_zones: string[];
   best_bitstring: string;
   qubo_energy: number;
+  objective_value: number;
   feasible: boolean;
   n_stations: number;
   success_probability: number;
