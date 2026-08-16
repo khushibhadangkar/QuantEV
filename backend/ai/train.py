@@ -46,8 +46,8 @@ log = logging.getLogger(__name__)
 
 # ── Hyperparameters ────────────────────────────────────────────────────────────
 RF_PARAMS: Dict = {
-    "n_estimators":      200,
-    "max_depth":         20,
+    "n_estimators":      50,
+    "max_depth":         12,
     "min_samples_leaf":  4,
     "max_features":      "sqrt",
     "n_jobs":            -1,

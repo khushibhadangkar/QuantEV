@@ -192,10 +192,43 @@ export default function Page() {
                     Select a planning area, set your station budget, and let AI and quantum optimisation identify the ideal sites.
                   </p>
                 </div>
+
+                {/* Default planning area row */}
+                <div style={{ padding: "12px 22px", borderTop: "1px solid var(--color-border-subtle)", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "var(--color-navy-900)", border: "2px solid white", boxShadow: "0 1px 4px rgba(10,22,40,0.25)", flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink)" }}>{locationName}</div>
+                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)" }}>
+                      {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E
+                    </div>
+                  </div>
+                  <span style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)", letterSpacing: "0.04em" }}>
+                    Default area
+                  </span>
+                </div>
+
                 <PlanningControls
                   stationCount={stationCount}
                   onStationCountChange={setStationCount}
                 />
+
+                {/* Run analysis button */}
+                <div style={{ padding: "14px 22px" }}>
+                  <button
+                    onClick={handleSearch}
+                    style={{
+                      width: "100%", padding: "13px", borderRadius: "12px", border: "none",
+                      background: "var(--color-navy-900)", color: "white",
+                      fontFamily: "Times New Roman, serif", fontSize: "15px", letterSpacing: "-0.005em",
+                      cursor: "pointer", transition: "opacity 0.2s ease, transform 0.15s ease",
+                      boxShadow: "0 4px 16px rgba(10,22,40,0.22)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}
+                  >
+                    Run infrastructure analysis →
+                  </button>
+                </div>
               </div>
               <SearchBar onLocationSelect={handleLocationSelect} />
             </div>

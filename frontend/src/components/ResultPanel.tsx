@@ -29,13 +29,7 @@ function siteScore(demand: number, maxDemand: number, quboCValue: number): numbe
   return Math.round(demandScore + coverageScore);
 }
 
-const COST_PER_STATION = 2_800_000;
-const COST_LABELS: Record<number, string> = {
-  2: "¥5.6M",
-  3: "¥8.4M",
-  4: "¥11.2M",
-  5: "¥14.0M",
-};
+
 
 interface ResultPanelProps {
   data: OptimizeResponse;
@@ -71,12 +65,9 @@ export function ResultPanel({
   const coveragePct = total_candidate_demand_kwh_h > 0
     ? (coveredDemand / total_candidate_demand_kwh_h) * 100 : 0;
 
-  // Estimated before (0 stations) vs after
-  const beforeCoverage = 0;
   const coverageImprovement = coveragePct;
 
   const k = selected_zones.length;
-  const cost = k * COST_PER_STATION;
 
   const tabStyle = (t: typeof activeTab) => ({
     flex: 1,
@@ -103,7 +94,7 @@ export function ResultPanel({
           {k} recommended sites
         </div>
         <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-4)", marginTop: "2px" }}>
-          {coveragePct.toFixed(0)}% demand coverage · {COST_LABELS[k] ?? `¥${(cost / 1e6).toFixed(1)}M`} est.
+          {coveragePct.toFixed(0)}% demand coverage · {k} stations
         </div>
       </div>
 
@@ -274,7 +265,6 @@ export function ResultPanel({
               {[
                 { label: "Covered demand", value: formatDemand(coveredDemand), sub: `of ${formatDemand(total_candidate_demand_kwh_h)} total` },
                 { label: "Stations deployed", value: `${k}`, sub: `of 8 candidate sites` },
-                { label: "Est. capital cost", value: COST_LABELS[k] ?? `¥${(cost / 1e6).toFixed(1)}M`, sub: `¥2.8M per station` },
                 { label: "Optimisation method", value: "QAOA", sub: qaoa.matches_qubo_optimum ? "Global optimum found" : "Near-optimal solution" },
               ].map(({ label, value, sub }) => (
                 <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid var(--color-border-subtle)" }}>
@@ -316,7 +306,6 @@ export function ResultPanel({
           {[2, 3, 4, 5].map((n) => {
             const isActive = activeScenario === n || (!activeScenario && n === k);
             const estCoverage = Math.min(n * (coveragePct / k), 100);
-            const estCost = COST_LABELS[n] ?? `¥${((n * COST_PER_STATION) / 1e6).toFixed(1)}M`;
 
             return (
               <button
@@ -344,9 +333,6 @@ export function ResultPanel({
                         current
                       </span>
                     )}
-                  </span>
-                  <span style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-3)" }}>
-                    {estCost}
                   </span>
                 </div>
                 <div style={{ height: "3px", background: "var(--color-border)", borderRadius: "99px", overflow: "hidden" }}>

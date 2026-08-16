@@ -8,16 +8,7 @@ interface PlanningControlsProps {
 
 const STATION_OPTIONS = [2, 3, 4, 5];
 
-const COST_PER_STATION_CNY = 2_800_000; // ~¥2.8M per fast-charging station (realistic Shenzhen estimate)
-
-function formatCNY(cny: number): string {
-  if (cny >= 1_000_000) return `¥${(cny / 1_000_000).toFixed(1)}M`;
-  return `¥${(cny / 1000).toFixed(0)}K`;
-}
-
 export function PlanningControls({ stationCount, onStationCountChange, disabled }: PlanningControlsProps) {
-  const totalCost = stationCount * COST_PER_STATION_CNY;
-
   return (
     <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--color-border-subtle)" }}>
       <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "10px" }}>
@@ -25,7 +16,7 @@ export function PlanningControls({ stationCount, onStationCountChange, disabled 
       </div>
 
       {/* Station count selector */}
-      <div style={{ marginBottom: "12px" }}>
+      <div>
         <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-2)", marginBottom: "8px" }}>
           Stations to place
         </div>
@@ -65,26 +56,6 @@ export function PlanningControls({ stationCount, onStationCountChange, disabled 
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Cost estimate */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "8px 12px",
-          background: "var(--color-grey-50)",
-          borderRadius: "8px",
-          border: "1px solid var(--color-border-subtle)",
-        }}
-      >
-        <span style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-4)" }}>
-          Estimated capital cost
-        </span>
-        <span style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-2)" }}>
-          {formatCNY(totalCost)}
-        </span>
       </div>
     </div>
   );
