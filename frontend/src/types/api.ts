@@ -7,6 +7,7 @@
 // ── Request ─────────────────────────────────────────────────────────────────
 
 export interface OptimizeRequest {
+  station_count?: number; // 1-8
   reps?: number;   // 1–5, default 1
   shots?: number;  // 128–16384, default 2048
   seed?: number;   // ≥ 0, default 42

@@ -46,8 +46,7 @@ from backend.ai.features import (
     build_features,
     chronological_split,
 )
-from backend.quantum.qubo import build_qubo, QUBOProblem
-from backend.optimization.classical_solver import PlacementProblem, solve_exhaustive
+from backend.quantum.qubo import build_qubo, QUBOProblem, objective_value as qubo_objective_value
 
 log = logging.getLogger(__name__)
 
@@ -67,9 +66,10 @@ _LABEL_TO_TAZID: dict[str, int] = {
 _CANDIDATE_TAZIDS = list(_LABEL_TO_TAZID.values())
 
 # ── Known QUBO ground truth (qubo_validation.json — 9/9 checks passed) ───────
-_QUBO_OPT_ZONES  = ["Z0", "Z2", "Z3"]
-_QUBO_OPT_ENERGY = -139.697448
-_QUBO_OPT_BITS   = "10110000"
+# These are kept for reference, but the pipeline now computes the optimum dynamically for any K.
+_QUBO_OPT_ZONES_K3  = ["Z0", "Z2", "Z3"]
+_QUBO_OPT_ENERGY_K3 = -139.697448
+_QUBO_OPT_BITS_K3   = "10110000"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ def _predict_demand() -> tuple[dict[str, float], dict]:
 # Stage 2 — QUBO construction
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _build_qubo_from_predictions(demand_by_label: dict[str, float]) -> QUBOProblem:
+def _build_qubo_from_predictions(demand_by_label: dict[str, float], station_count: int) -> QUBOProblem:
     """
     Build QUBO from live predictions by passing an in-memory DataFrame
     directly to build_qubo().  No temporary file is created.
@@ -318,45 +318,86 @@ def _build_qubo_from_predictions(demand_by_label: dict[str, float]) -> QUBOProbl
     for lbl, d in demand_by_label.items():
         zones_df.loc[zones_df["label"] == lbl, "mean_pred_kwh"] = d
 
-    qubo = build_qubo(zones_csv=zones_df, dist_csv=_DIST_CSV)
+    qubo = build_qubo(zones_csv=zones_df, dist_csv=_DIST_CSV, budget=station_count)
 
     log.info(
-        "QUBO built: n=%d  K=%d  λ=%.1f  E(opt_bits)=%.4f",
-        qubo.n, qubo.budget, qubo.lam,
-        qubo.energy(qubo.bitstring_to_x(_QUBO_OPT_BITS)),
+        "QUBO built: n=%d  K=%d  λ=%.1f",
+        qubo.n, qubo.budget, qubo.lam
     )
     return qubo
 
+def _get_qubo_global_minimum(qubo: QUBOProblem) -> tuple[str, float, list[str]]:
+    """
+    Compute the absolute global minimum of the QUBO by exhaustive evaluation over all 2^n states.
+    For n=8, this is only 256 evaluations, which takes < 1 ms.
+    """
+    best_energy = float("inf")
+    best_bits = None
+    for val in range(2**qubo.n):
+        bits = format(val, f"0{qubo.n}b")
+        x = np.array([int(b) for b in bits], dtype=float)
+        e = qubo.energy(x)
+        if e < best_energy:
+            best_energy = e
+            best_bits = bits
+            
+    best_zones = [qubo.labels[j] for j, b in enumerate(best_bits) if b == "1"]
+    return best_bits, best_energy, best_zones
+
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 3a — Classical solver
+# Stage 3a — Classical solver (same objective as QUBO)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _solve_classical(qubo: QUBOProblem) -> dict:
-    """Run exhaustive coverage solver (unchanged) and return compact result."""
-    problem = PlacementProblem(
-        labels       = qubo.labels,
-        demands      = qubo.demands,
-        coverage_adj = qubo.coverage_adj,
-        budget       = qubo.budget,
-    )
-    t0     = time.perf_counter()
-    output = solve_exhaustive(problem)
-    rt     = time.perf_counter() - t0
+    """
+    Exhaustive classical solver using the SAME objective as the QUBO:
+        f(x) = Σ_j c_j · x_j   (demand-weighted proximity)
 
-    best  = output.best
-    x_vec = np.zeros(qubo.n)
-    for idx in best.station_idxs:
-        x_vec[idx] = 1.0
+    Since f is linear, the optimum is the K zones with the highest c_j values.
+    We still enumerate all C(n,K) combos for completeness and also report
+    coverage metrics as informational data.
+    """
+    import itertools
+
+    t0 = time.perf_counter()
+
+    n = qubo.n
+    K = qubo.budget
+    c = qubo.c_values
+
+    # Enumerate all combos and find the one maximising Σ c_j x_j
+    best_obj   = -np.inf
+    best_combo = None
+    for combo in itertools.combinations(range(n), K):
+        obj = sum(c[j] for j in combo)
+        if obj > best_obj:
+            best_obj   = obj
+            best_combo = combo
+
+    # Build the binary vector for the winner
+    x_vec = np.zeros(n)
+    for j in best_combo:
+        x_vec[j] = 1.0
+
+    selected_labels = [qubo.labels[j] for j in best_combo]
+
+    # Compute coverage metrics (informational, not the selection criterion)
+    from backend.optimization.classical_solver import covered_demand
+    cov_d, cov_mask = covered_demand(best_combo, qubo.demands, qubo.coverage_adj)
+    total_demand = float(qubo.demands.sum())
+
+    rt = time.perf_counter() - t0
 
     return {
         "method":               "classical_exhaustive",
-        "selected_zones":       best.stations,
+        "selected_zones":       selected_labels,
+        "objective_value":      round(float(best_obj), 6),
         "qubo_energy":          round(float(qubo.energy(x_vec)), 6),
         "feasible":             True,
-        "n_stations":           len(best.stations),
-        "covered_demand_kwh_h": round(best.covered_demand, 4),
-        "coverage_pct":         round(best.coverage_pct, 4),
+        "n_stations":           len(selected_labels),
+        "covered_demand_kwh_h": round(cov_d, 4),
+        "coverage_pct":         round(cov_d / total_demand * 100.0, 4) if total_demand > 0 else 0.0,
         "runtime_s":            round(rt, 6),
     }
 
@@ -384,7 +425,7 @@ def _build_qp(qubo: QUBOProblem):
 
 def _best_feasible(quasi_dist: Any, qubo: QUBOProblem) -> tuple[str, float]:
     dist = dict(quasi_dist) if not isinstance(quasi_dist, dict) else quasi_dist
-    best_bits, best_e = _QUBO_OPT_BITS, float("inf")
+    best_bits, best_e = "", float("inf")
     for state_int in dist:
         bits = format(state_int, f"0{qubo.n}b")[::-1]
         x    = qubo.bitstring_to_x(bits)
@@ -396,9 +437,9 @@ def _best_feasible(quasi_dist: Any, qubo: QUBOProblem) -> tuple[str, float]:
     return best_bits, best_e
 
 
-def _success_prob(quasi_dist: Any, qubo: QUBOProblem) -> float:
+def _success_prob(quasi_dist: Any, qubo: QUBOProblem, opt_bits: str) -> float:
     dist    = dict(quasi_dist) if not isinstance(quasi_dist, dict) else quasi_dist
-    opt_int = int(_QUBO_OPT_BITS[::-1], 2)
+    opt_int = int(opt_bits[::-1], 2)
     return round(float(dist.get(opt_int, 0.0)), 8)
 
 
@@ -420,7 +461,7 @@ def _top_samples(quasi_dist: Any, qubo: QUBOProblem, top_n: int = 10) -> list[di
     return rows[:top_n]
 
 
-def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
+def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int, opt_bits: str, opt_energy: float, opt_zones: list[str]) -> dict:
     """
     Solve the QUBO with QAOA on the Aer local simulator.
     Qiskit symbols are imported HERE — after all pandas/parquet work is done —
@@ -466,7 +507,7 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
     n_sel       = int(final_x.sum())
     selected    = [qubo.labels[j] for j, b in enumerate(final_bits) if b == "1"]
     depth       = er.optimal_circuit.depth() if er.optimal_circuit is not None else -1
-    succ_prob   = _success_prob(er.eigenstate, qubo)
+    succ_prob   = _success_prob(er.eigenstate, qubo, opt_bits)
     top10       = _top_samples(er.eigenstate, qubo, top_n=10)
 
     log.info(
@@ -482,6 +523,7 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
         "selected_zones":       selected,
         "best_bitstring":       final_bits,
         "qubo_energy":          round(final_energy, 6),
+        "objective_value":      round(float(qubo.c_values @ final_x), 6),
         "feasible":             n_sel == qubo.budget,
         "n_stations":           n_sel,
         "success_probability":  succ_prob,
@@ -493,8 +535,8 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
         "optimal_parameters":   [round(float(v), 6) for v in er.optimal_point]
                                 if er.optimal_point is not None else [],
         "top10_samples":        top10,
-        "matches_qubo_optimum": sorted(selected) == sorted(_QUBO_OPT_ZONES),
-        "energy_gap":           round(final_energy - _QUBO_OPT_ENERGY, 6),
+        "matches_qubo_optimum": sorted(selected) == sorted(opt_zones),
+        "energy_gap":           round(final_energy - opt_energy, 6),
     }
 
 
@@ -503,6 +545,7 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_pipeline(
+    station_count: int = 3,
     reps:  int = 1,
     shots: int = 2048,
     seed:  int = 42,
@@ -530,7 +573,9 @@ def run_pipeline(
 
     # ── 2. QUBO ───────────────────────────────────────────────────────────────
     log.info("Pipeline stage 2: QUBO construction")
-    qubo = _build_qubo_from_predictions(demand_by_label)
+    qubo = _build_qubo_from_predictions(demand_by_label, station_count)
+    
+    opt_bits, opt_energy, opt_zones = _get_qubo_global_minimum(qubo)
 
     qubo_meta = {
         "n_qubits":     qubo.n,
@@ -538,9 +583,7 @@ def run_pipeline(
         "lambda":       qubo.lam,
         "c_values":     {lbl: round(float(qubo.c_values[i]), 6)
                          for i, lbl in enumerate(qubo.labels)},
-        "global_minimum_energy": round(
-            qubo.energy(qubo.bitstring_to_x(_QUBO_OPT_BITS)), 6
-        ),
+        "global_minimum_energy": round(opt_energy, 6),
     }
 
     # ── 3a. Classical solver ──────────────────────────────────────────────────
@@ -549,7 +592,10 @@ def run_pipeline(
 
     # ── 3b. QAOA ──────────────────────────────────────────────────────────────
     log.info("Pipeline stage 3b: QAOA (reps=%d shots=%d seed=%d)", reps, shots, seed)
-    qaoa = _solve_qaoa(qubo, reps=reps, shots=shots, seed=seed)
+    qaoa = _solve_qaoa(
+        qubo, reps=reps, shots=shots, seed=seed, 
+        opt_bits=opt_bits, opt_energy=opt_energy, opt_zones=opt_zones
+    )
 
     # ── 4. Recommendation (QAOA preferred if feasible) ─────────────────────
     if qaoa["feasible"]:
@@ -593,7 +639,7 @@ def run_pipeline(
             "qubo_energy":                  rec_energy,
             "feasible":                     True,
             "n_stations":                   len(rec_zones),
-            "matches_qubo_optimum":         sorted(rec_zones) == sorted(_QUBO_OPT_ZONES),
+            "matches_qubo_optimum":         sorted(rec_zones) == sorted(opt_zones),
             "predicted_demand":             {z: demand_by_label[z] for z in rec_zones},
             "total_candidate_demand_kwh_h": round(total_demand, 4),
             "zone_details":                 zone_details,

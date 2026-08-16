@@ -33,6 +33,12 @@ class OptimizeRequest(BaseModel):
     Parameters for the optimization run.  All fields are optional — omitting
     them applies the validated defaults from experiments/08.
     """
+    station_count: int = Field(
+        default=3,
+        ge=1,
+        le=8,
+        description="Number of charging stations to place.",
+    )
     reps: int = Field(
         default=1,
         ge=1,
@@ -112,6 +118,7 @@ class SampleEntry(BaseModel):
 class ClassicalResult(BaseModel):
     method: str
     selected_zones: list[str]
+    objective_value: float
     qubo_energy: float
     feasible: bool
     n_stations: int
@@ -128,6 +135,7 @@ class QAOAResult(BaseModel):
     selected_zones: list[str]
     best_bitstring: str
     qubo_energy: float
+    objective_value: float
     feasible: bool
     n_stations: int
     success_probability: float
@@ -208,6 +216,7 @@ async def run_optimize(request: OptimizeRequest) -> OptimizeResponse:
     )
     try:
         raw = svc.run_pipeline(
+            station_count=request.station_count,
             reps=request.reps,
             shots=request.shots,
             seed=request.seed,

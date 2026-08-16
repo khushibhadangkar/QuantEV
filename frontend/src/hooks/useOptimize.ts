@@ -9,10 +9,10 @@ export type AppState = AsyncState<OptimizeResponse>;
 export function useOptimize() {
   const [state, setState] = useState<AppState>({ status: "idle" });
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (stationCount: number = 3) => {
     setState({ status: "loading" });
     try {
-      const data = await runOptimize({ reps: 1, shots: 2048, seed: 42 });
+      const data = await runOptimize({ station_count: stationCount, reps: 1, shots: 2048, seed: 42 });
       console.info(
         "[QuantEV] Complete →",
         data.recommendation.selected_zones,

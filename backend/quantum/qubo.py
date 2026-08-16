@@ -104,7 +104,6 @@ import pandas as pd
 # ── Constants ─────────────────────────────────────────────────────────────────
 D_MIN_M: float = 100.0   # minimum effective distance (metres) — prevents 1/0
 LAMBDA:  float = 10.0    # penalty weight for the budget constraint
-BUDGET_K: int  = 3       # exactly K stations to place
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -187,8 +186,8 @@ class QUBOProblem:
 def build_qubo(
     zones_csv:    Path | pd.DataFrame,
     dist_csv:     Path,
+    budget:       int,
     lam:          float = LAMBDA,
-    budget:       int   = BUDGET_K,
     d_min_m:      float = D_MIN_M,
 ) -> QUBOProblem:
     """

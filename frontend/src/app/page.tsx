@@ -48,7 +48,7 @@ export default function Page() {
     setSequenceStep(0);
     // Run the optimization sequence animation in parallel with the API call
     // We drive the sequence steps manually via the map
-    const apiPromise = run();
+    const apiPromise = run(stationCount);
 
     // The map sequence runs independently; sequence steps 0-4 are paced below
     // We pass setSequenceStep as the callback
