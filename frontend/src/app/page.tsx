@@ -9,6 +9,7 @@ import { ResultPanel } from "@/components/ResultPanel";
 import { PlanningControls } from "@/components/PlanningControls";
 import { HowItWorks } from "@/components/HowItWorks";
 import type { ChargingMapHandle } from "@/components/ChargingMap";
+import type { PlanningScenario } from "@/types/api";
 
 const ChargingMap = dynamic(
   () => import("@/components/ChargingMap"),
@@ -32,6 +33,7 @@ export default function Page() {
   const [userLng, setUserLng] = useState(114.075);
   const [locationName, setLocationName] = useState("Shenzhen");
   const [stationCount, setStationCount] = useState(3);
+  const [scenario, setScenario] = useState<PlanningScenario>("all_hours");
   const [sequenceStep, setSequenceStep] = useState(0);
   const [activeScenario, setActiveScenario] = useState<number | undefined>(undefined);
 
@@ -48,7 +50,7 @@ export default function Page() {
     setSequenceStep(0);
     // Run the optimization sequence animation in parallel with the API call
     // We drive the sequence steps manually via the map
-    const apiPromise = run(stationCount);
+    const apiPromise = run(stationCount, scenario);
 
     // The map sequence runs independently; sequence steps 0-4 are paced below
     // We pass setSequenceStep as the callback
@@ -210,6 +212,8 @@ export default function Page() {
                 <PlanningControls
                   stationCount={stationCount}
                   onStationCountChange={setStationCount}
+                  scenario={scenario}
+                  onScenarioChange={setScenario}
                 />
 
                 {/* Run analysis button */}
@@ -256,6 +260,8 @@ export default function Page() {
                 <PlanningControls
                   stationCount={stationCount}
                   onStationCountChange={setStationCount}
+                  scenario={scenario}
+                  onScenarioChange={setScenario}
                 />
 
                 {/* Analyse button */}

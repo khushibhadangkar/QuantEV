@@ -41,6 +41,15 @@ interface ResultPanelProps {
   activeScenario?: number;
 }
 
+const SCENARIO_LABELS: Record<string, string> = {
+  all_hours: "24h Baseline",
+  morning_peak: "Morning Rush",
+  afternoon: "Afternoon",
+  overnight: "Overnight Fleet",
+  weekday: "Weekday",
+  weekend: "Weekend",
+};
+
 export function ResultPanel({
   data,
   userLat,
@@ -54,6 +63,8 @@ export function ResultPanel({
   const { recommendation, qaoa, classical } = data;
   const { zone_details, selected_zones, total_candidate_demand_kwh_h } = recommendation;
   const selectedSet = new Set(selected_zones);
+
+  const scenarioLabel = SCENARIO_LABELS[recommendation.scenario || data.demand_prediction.scenario || "all_hours"] || "24h Baseline";
 
   const maxDemand = Math.max(...zone_details.map((z) => z.predicted_demand_kwh_h), 1);
 
@@ -88,7 +99,7 @@ export function ResultPanel({
       {/* Header */}
       <div style={{ padding: "16px 22px 12px", borderBottom: "1px solid var(--color-border-subtle)" }}>
         <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "3px" }}>
-          {locationName}
+          {locationName} · {scenarioLabel}
         </div>
         <div style={{ fontFamily: "Times New Roman, serif", fontSize: "18px", letterSpacing: "-0.015em", color: "var(--color-ink)", lineHeight: 1.2 }}>
           {k} recommended sites

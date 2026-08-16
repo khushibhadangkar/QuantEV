@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import traceback
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
@@ -22,6 +22,15 @@ from backend.api.services import optimizer as svc
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+
+ScenarioType = Literal[
+    "all_hours",
+    "morning_peak",
+    "afternoon",
+    "overnight",
+    "weekday",
+    "weekend",
+]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -38,6 +47,10 @@ class OptimizeRequest(BaseModel):
         ge=1,
         le=8,
         description="Number of charging stations to place.",
+    )
+    scenario: ScenarioType = Field(
+        default="all_hours",
+        description="Planning demand scenario (all_hours, morning_peak, afternoon, overnight, weekday, weekend).",
     )
     reps: int = Field(
         default=1,
@@ -57,7 +70,17 @@ class OptimizeRequest(BaseModel):
         description="Random seed for AerSimulator + COBYLA (reproducibility).",
     )
 
-    model_config = {"json_schema_extra": {"example": {"reps": 1, "shots": 2048, "seed": 42}}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "station_count": 3,
+                "scenario": "all_hours",
+                "reps": 1,
+                "shots": 2048,
+                "seed": 42,
+            }
+        }
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -76,6 +99,7 @@ class ZoneDetail(BaseModel):
 
 class RecommendationResponse(BaseModel):
     selected_zones: list[str]
+    scenario: str = "all_hours"
     method: str
     qubo_energy: float
     feasible: bool
@@ -88,6 +112,7 @@ class RecommendationResponse(BaseModel):
 
 class AIDemandResponse(BaseModel):
     model: str
+    scenario: str = "all_hours"
     test_r2: Optional[float]
     test_mae: Optional[float]
     test_split_start: str
@@ -217,6 +242,7 @@ async def run_optimize(request: OptimizeRequest) -> OptimizeResponse:
     try:
         raw = svc.run_pipeline(
             station_count=request.station_count,
+            scenario=request.scenario,
             reps=request.reps,
             shots=request.shots,
             seed=request.seed,

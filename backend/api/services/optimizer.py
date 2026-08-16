@@ -85,13 +85,15 @@ class _PipelineCache:
     test_frame:    pd.DataFrame = field(default=None)   # chronological test split
     # Pre-extracted numpy arrays — immune to PyArrow allocator corruption
     # that can occur after Qiskit C-extension imports on the 2nd+ request.
-    X_test_np:     Any   = field(default=None)   # np.ndarray (n_samples, n_features)
-    test_zone_ids: Any   = field(default=None)   # np.ndarray of zone_id per row
-    test_split_start: str = field(default="")
-    test_split_end:   str = field(default="")
-    model_metrics: dict = field(default_factory=dict)
-    zones_df:      pd.DataFrame = field(default=None)   # candidate_zones.csv
-    ready:         bool = field(default=False)
+    X_test_np:          Any   = field(default=None)   # np.ndarray (n_samples, n_features)
+    test_zone_ids:      Any   = field(default=None)   # np.ndarray of zone_id per row
+    test_hours_np:      Any   = field(default=None)   # np.ndarray of hour per row
+    test_is_weekend_np: Any   = field(default=None)   # np.ndarray of is_weekend per row
+    test_split_start:   str   = field(default="")
+    test_split_end:     str   = field(default="")
+    model_metrics:      dict  = field(default_factory=dict)
+    zones_df:           pd.DataFrame = field(default=None)   # candidate_zones.csv
+    ready:              bool  = field(default=False)
 
 
 _cache = _PipelineCache()
@@ -200,10 +202,12 @@ def _load_cache() -> None:
     # ── Step 4: extract numpy arrays, then FREE all DataFrames ───────────────
     # This is the critical step: delete the large DataFrames BEFORE loading the
     # pipeline so their memory is available for the pipeline load.
-    _cache.X_test_np      = _cache.test_frame[FEATURE_COLS].to_numpy(dtype=float)
-    _cache.test_zone_ids  = _cache.test_frame["zone_id"].to_numpy()
-    _cache.test_split_start = str(_cache.test_frame["time"].min())
-    _cache.test_split_end   = str(_cache.test_frame["time"].max())
+    _cache.X_test_np          = _cache.test_frame[FEATURE_COLS].to_numpy(dtype=float)
+    _cache.test_zone_ids      = _cache.test_frame["zone_id"].to_numpy()
+    _cache.test_hours_np      = _cache.test_frame["hour"].to_numpy(dtype=int)
+    _cache.test_is_weekend_np = _cache.test_frame["is_weekend"].to_numpy(dtype=int)
+    _cache.test_split_start   = str(_cache.test_frame["time"].min())
+    _cache.test_split_end     = str(_cache.test_frame["time"].max())
 
     log.info(
         "X_test_np shape=%s, zone_ids=%d unique",
@@ -254,43 +258,78 @@ def _load_cache() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 1 — AI demand prediction
+# Stage 1 — AI demand prediction (scenario-conditioned)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _predict_demand() -> tuple[dict[str, float], dict]:
+VALID_SCENARIOS = {
+    "all_hours",
+    "morning_peak",
+    "afternoon",
+    "overnight",
+    "weekday",
+    "weekend",
+}
+
+
+def _predict_demand(scenario: str = "all_hours") -> tuple[dict[str, float], dict]:
     """
-    Run the RF pipeline on the test split and return per-zone mean predicted
-    demand (kWh/h).
+    Run the RF pipeline on the test split filtered by scenario and return
+    per-zone mean predicted demand (kWh/h).
+
+    Parameters
+    ----------
+    scenario : str
+        One of 'all_hours', 'morning_peak', 'afternoon', 'overnight', 'weekday', 'weekend'.
 
     Returns
     -------
     demand_by_label  : {"Z0": 3741.33, "Z1": 236.74, ...}
     ai_meta          : diagnostics dict included in the API response
     """
+    if scenario not in VALID_SCENARIOS:
+        raise ValueError(f"Invalid scenario '{scenario}'. Must be one of {sorted(VALID_SCENARIOS)}")
+
     _load_cache()
 
-    # Use the pre-extracted numpy arrays (populated at cache load time, before
-    # any Qiskit import).  This avoids the PyArrow allocator corruption that
-    # causes ArrowException on the 2nd+ request when the DataFrame is re-accessed
-    # after Qiskit C-extensions have been loaded.
-    X_test = _cache.X_test_np
+    # Use pre-extracted numpy arrays
+    X_test     = _cache.X_test_np
+    zone_ids   = _cache.test_zone_ids
+    hours      = _cache.test_hours_np
+    is_weekend = _cache.test_is_weekend_np
 
-    t0     = time.perf_counter()
-    y_pred = _cache.pipeline.predict(X_test)
+    # Scenario filtering mask
+    if scenario == "morning_peak":
+        mask = np.isin(hours, [7, 8, 9, 10, 11])
+    elif scenario == "afternoon":
+        mask = np.isin(hours, [12, 13, 14, 15, 16, 17, 18])
+    elif scenario == "overnight":
+        mask = np.isin(hours, [0, 1, 2, 3, 4, 5, 6])
+    elif scenario == "weekday":
+        mask = (is_weekend == 0)
+    elif scenario == "weekend":
+        mask = (is_weekend == 1)
+    else:  # "all_hours"
+        mask = np.ones(len(X_test), dtype=bool)
+
+    X_sub        = X_test[mask]
+    zone_ids_sub = zone_ids[mask]
+
+    t0      = time.perf_counter()
+    y_pred  = _cache.pipeline.predict(X_sub)
     pred_ms = (time.perf_counter() - t0) * 1000
 
-    # Aggregate per zone using the pre-extracted zone_id array
-    zone_ids = _cache.test_zone_ids
+    # Aggregate per zone using the scenario-masked zone_id array
     demand_by_label: dict[str, float] = {}
     for lbl, tazid in _LABEL_TO_TAZID.items():
-        mask = zone_ids == tazid
-        if mask.any():
-            demand_by_label[lbl] = round(float(y_pred[mask].mean()), 4)
+        z_mask = zone_ids_sub == tazid
+        if z_mask.any():
+            demand_by_label[lbl] = round(float(y_pred[z_mask].mean()), 4)
         else:
             demand_by_label[lbl] = 0.0
 
     ai_meta = {
         "model":             _cache.model_metrics.get("model", "RandomForestRegressor"),
+        "scenario":          scenario,
         "test_r2":           _cache.model_metrics.get("test_metrics", {}).get("r2"),
         "test_mae":          _cache.model_metrics.get("test_metrics", {}).get("mae"),
         "test_split_start":  _cache.test_split_start,
@@ -298,7 +337,7 @@ def _predict_demand() -> tuple[dict[str, float], dict]:
         "prediction_time_ms": round(pred_ms, 2),
         "predicted_demand":  demand_by_label,
     }
-    log.info("AI prediction done in %.1f ms", pred_ms)
+    log.info("AI prediction (%s) done in %.1f ms", scenario, pred_ms)
     return demand_by_label, ai_meta
 
 
@@ -480,10 +519,13 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int, opt_bits: s
     pm      = generate_preset_pass_manager(optimization_level=1, backend=backend)
     sampler = AerSamplerV2(default_shots=shots, seed=seed)
 
+    initial_point = np.random.default_rng(seed).random(2 * reps)
+
     qaoa = QAOA(
         sampler=sampler,
         optimizer=COBYLA(maxiter=500, rhobeg=np.pi / 4, tol=1e-6),
         reps=reps,
+        initial_point=initial_point,
         pass_manager=pm,
     )
 
@@ -546,6 +588,7 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int, opt_bits: s
 
 def run_pipeline(
     station_count: int = 3,
+    scenario: str = "all_hours",
     reps:  int = 1,
     shots: int = 2048,
     seed:  int = 42,
@@ -555,6 +598,8 @@ def run_pipeline(
 
     Parameters
     ----------
+    station_count : number of stations to place
+    scenario : demand scenario name (all_hours, morning_peak, afternoon, overnight, weekday, weekend)
     reps  : QAOA ansatz depth (p)
     shots : simulator shots per circuit evaluation
     seed  : random seed for AerSimulator + COBYLA
@@ -567,9 +612,9 @@ def run_pipeline(
     """
     t_total = time.perf_counter()
 
-    # ── 1. AI demand prediction ───────────────────────────────────────────────
-    log.info("Pipeline stage 1: AI demand prediction")
-    demand_by_label, ai_meta = _predict_demand()
+    # ── 1. AI demand prediction (scenario-conditioned) ────────────────────────
+    log.info("Pipeline stage 1: AI demand prediction (scenario=%s)", scenario)
+    demand_by_label, ai_meta = _predict_demand(scenario=scenario)
 
     # ── 2. QUBO ───────────────────────────────────────────────────────────────
     log.info("Pipeline stage 2: QUBO construction")
@@ -625,7 +670,7 @@ def run_pipeline(
         })
 
     pipeline_runtime = round(time.perf_counter() - t_total, 3)
-    log.info("Pipeline complete in %.2f s → %s", pipeline_runtime, rec_zones)
+    log.info("Pipeline complete in %.2f s → %s (scenario=%s, K=%d)", pipeline_runtime, rec_zones, scenario, station_count)
 
     return {
         "pipeline_runtime_s": pipeline_runtime,
@@ -635,6 +680,7 @@ def run_pipeline(
         "qaoa":               qaoa,
         "recommendation": {
             "selected_zones":               rec_zones,
+            "scenario":                     scenario,
             "method":                       rec_method,
             "qubo_energy":                  rec_energy,
             "feasible":                     True,

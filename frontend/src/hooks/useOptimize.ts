@@ -2,17 +2,17 @@
 
 import { useState, useCallback } from "react";
 import { runOptimize, ApiClientError } from "@/lib/api";
-import type { OptimizeResponse, AsyncState } from "@/types/api";
+import type { OptimizeResponse, AsyncState, PlanningScenario } from "@/types/api";
 
 export type AppState = AsyncState<OptimizeResponse>;
 
 export function useOptimize() {
   const [state, setState] = useState<AppState>({ status: "idle" });
 
-  const run = useCallback(async (stationCount: number = 3) => {
+  const run = useCallback(async (stationCount: number = 3, scenario: PlanningScenario = "all_hours") => {
     setState({ status: "loading" });
     try {
-      const data = await runOptimize({ station_count: stationCount, reps: 1, shots: 2048, seed: 42 });
+      const data = await runOptimize({ station_count: stationCount, scenario, reps: 1, shots: 2048, seed: 42 });
       console.info(
         "[QuantEV] Complete →",
         data.recommendation.selected_zones,
