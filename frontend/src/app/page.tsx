@@ -24,7 +24,7 @@ const ChargingMap = dynamic(
 type UIPhase = "idle" | "located" | "searching" | "result" | "error";
 
 export default function Page() {
-  const { state, run, reset } = useOptimize();
+  const { state, run, reset, lastRunParams } = useOptimize();
   const mapRef = useRef<ChargingMapHandle>(null);
   const resultScrollRef = useRef<HTMLDivElement>(null);
 
@@ -288,6 +288,10 @@ export default function Page() {
                   userLng={userLng}
                   locationName={locationName}
                   onReset={handleReset}
+                  stationCount={stationCount}
+                  scenario={scenario}
+                  lastRunParams={lastRunParams}
+                  onSearch={handleSearch}
                 />
               </div>
             </div>

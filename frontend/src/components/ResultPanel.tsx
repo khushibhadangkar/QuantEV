@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { OptimizeResponse } from "@/types/api";
+import type { OptimizeResponse, PlanningScenario } from "@/types/api";
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -29,6 +29,10 @@ interface ResultPanelProps {
   userLng: number;
   locationName: string;
   onReset: () => void;
+  stationCount: number;
+  scenario: PlanningScenario;
+  lastRunParams: { stationCount: number; scenario: PlanningScenario } | null;
+  onSearch: () => void;
 }
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -46,8 +50,14 @@ export function ResultPanel({
   userLng,
   locationName,
   onReset,
+  stationCount,
+  scenario,
+  lastRunParams,
+  onSearch,
 }: ResultPanelProps) {
   const [activeTab, setActiveTab] = useState<"sites" | "compare" | "diagnostics">("sites");
+
+  const isStale = lastRunParams && (lastRunParams.stationCount !== stationCount || lastRunParams.scenario !== scenario);
 
   const { recommendation, qaoa, classical, qubo, pipeline_runtime_s } = data;
   const { zone_details, selected_zones } = recommendation;
@@ -78,7 +88,34 @@ export function ResultPanel({
 
   return (
     <div className="anim-slide-up" style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "16px 22px 12px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+      {isStale && (
+        <div style={{ padding: "12px 22px", background: "var(--color-warning-bg)", borderBottom: "1px solid rgba(220, 160, 0, 0.2)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-warning-text)", lineHeight: 1.2 }}>
+              Controls changed. <br/>These results are for <strong>{lastRunParams?.stationCount} stations</strong> ({SCENARIO_LABELS[lastRunParams?.scenario || "all_hours"]}).
+            </span>
+          </div>
+          <button
+            onClick={onSearch}
+            style={{
+              padding: "6px 12px", borderRadius: "6px", border: "none",
+              background: "var(--color-warning)", color: "white",
+              fontFamily: "Times New Roman, serif", fontSize: "12px",
+              cursor: "pointer", transition: "opacity 0.2s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+          >
+            Update
+          </button>
+        </div>
+      )}
+      <div style={{ padding: "16px 22px 12px", borderBottom: "1px solid var(--color-border-subtle)", opacity: isStale ? 0.5 : 1 }}>
         <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "3px" }}>
           {locationName} · {scenarioLabel}
         </div>
