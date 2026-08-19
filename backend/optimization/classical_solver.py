@@ -1,16 +1,17 @@
 """
 backend/optimization/classical_solver.py
 =========================================
-Exhaustive classical solver for the EV charger-placement problem.
+Exhaustive classical solvers for the EV charger-placement problem.
 
-Problem
--------
-Given n candidate zones, each with a predicted demand score and a set of
-coverage neighbours (zones reachable within 3 km), choose exactly K zones
-to place new stations so that total covered demand is maximised.
+Objectives
+----------
+1. Proximity-Weighted (ACTIVE): Maximises Σ c_j x_j. This is the canonical
+   objective used by the live API pipeline, mathematically identical to the QUBO.
+   See: solve_proximity_weighted()
 
-A zone i is *covered* if at least one selected zone j satisfies j == i or
-j is a 3 km neighbour of i.
+2. Covered Demand (LEGACY): Maximises pure covered demand (set cover).
+   Used for informational metrics and historical experiments.
+   See: solve_exhaustive()
 
 This module is intentionally self-contained and dependency-light so it can
 also be imported by the QAOA module for ground-truth comparison.
@@ -24,6 +25,8 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 
 import numpy as np
+
+from backend.quantum.qubo import QUBOProblem
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -162,3 +165,55 @@ def solve_exhaustive(problem: PlacementProblem) -> SolverOutput:
         runtime_s      = runtime_s,
         solver         = "exhaustive_classical",
     )
+
+
+def solve_proximity_weighted(qubo: QUBOProblem) -> dict:
+    """
+    Exhaustive classical solver using the SAME objective as the QUBO:
+        f(x) = Σ_j c_j · x_j   (demand-weighted proximity)
+
+    Since f is linear, the optimum is the K zones with the highest c_j values.
+    We still enumerate all C(n,K) combos for completeness and also report
+    coverage metrics as informational data.
+    """
+    import itertools
+
+    t0 = time.perf_counter()
+
+    n = qubo.n
+    K = qubo.budget
+    c = qubo.c_values
+
+    # Enumerate all combos and find the one maximising Σ c_j x_j
+    best_obj   = -np.inf
+    best_combo = None
+    for combo in itertools.combinations(range(n), K):
+        obj = sum(c[j] for j in combo)
+        if obj > best_obj:
+            best_obj   = obj
+            best_combo = combo
+
+    # Build the binary vector for the winner
+    x_vec = np.zeros(n)
+    for j in best_combo:
+        x_vec[j] = 1.0
+
+    selected_labels = [qubo.labels[j] for j in best_combo]
+
+    # Compute coverage metrics (informational, not the selection criterion)
+    cov_d, cov_mask = covered_demand(best_combo, qubo.demands, qubo.coverage_adj)
+    total_demand = float(qubo.demands.sum())
+
+    rt = time.perf_counter() - t0
+
+    return {
+        "method":               "classical_exhaustive",
+        "selected_zones":       selected_labels,
+        "objective_value":      round(float(best_obj), 6),
+        "qubo_energy":          round(float(qubo.energy(x_vec)), 6),
+        "feasible":             True,
+        "n_stations":           len(selected_labels),
+        "covered_demand_kwh_h": round(cov_d, 4),
+        "coverage_pct":         round(cov_d / total_demand * 100.0, 4) if total_demand > 0 else 0.0,
+        "runtime_s":            round(rt, 6),
+    }
