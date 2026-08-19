@@ -73,7 +73,7 @@ export function PlanningControls({
                 }
               }}
             >
-              {n}
+              <span className="numeric">{n}</span>
             </button>
           ))}
         </div>

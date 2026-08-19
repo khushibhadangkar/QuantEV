@@ -27,6 +27,8 @@ export interface OptimizeRequest {
 export interface ZoneDetail {
   label: string;
   tazid: number;
+  name_primary?: string;
+  name_secondary?: string;
   longitude: number;
   latitude: number;
   predicted_demand_kwh_h: number;

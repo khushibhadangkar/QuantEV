@@ -15,12 +15,12 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 }
 
 function formatDemand(kwh: number): string {
-  if (kwh >= 1000) return `${(kwh / 1000).toFixed(1)} MWh/h`;
-  return `${Math.round(kwh)} kWh/h`;
+  if (kwh >= 1000) return `${Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(kwh / 1000)} MWh/h`;
+  return `${Intl.NumberFormat("en-US").format(Math.round(kwh))} kWh/h`;
 }
 
 function formatDist(km: number): string {
-  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+  return km < 1 ? `${Intl.NumberFormat("en-US").format(Math.round(km * 1000))} m` : `${km.toFixed(1)} km`;
 }
 
 interface ResultPanelProps {
@@ -97,7 +97,7 @@ export function ResultPanel({
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
             <span style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-warning-text)", lineHeight: 1.2 }}>
-              Controls changed. <br/>These results are for <strong>{lastRunParams?.stationCount} stations</strong> ({SCENARIO_LABELS[lastRunParams?.scenario || "all_hours"]}).
+              Controls changed. <br/>These results are for <strong className="numeric">{lastRunParams?.stationCount}</strong> <strong>stations</strong> ({SCENARIO_LABELS[lastRunParams?.scenario || "all_hours"]}).
             </span>
           </div>
           <button
@@ -169,10 +169,10 @@ export function ResultPanel({
                     </div>
                     <div>
                       <div style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink)", letterSpacing: "-0.01em" }}>
-                        Site {zone.label}
+                        {zone.name_primary || `Site ${zone.label}`}
                       </div>
                       <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)" }}>
-                        {zone.latitude.toFixed(4)}°N · {formatDist(dist)} away
+                        {zone.name_secondary ? `${zone.name_secondary} · ` : ""}<span className="numeric">{zone.label}</span> · <span className="numeric">{formatDist(dist)}</span> away
                       </div>
                     </div>
                   </div>
@@ -181,11 +181,11 @@ export function ResultPanel({
                 <div style={{ display: "flex", gap: "16px" }}>
                   <div>
                     <div style={{ fontFamily: "Times New Roman, serif", fontSize: "10px", color: "var(--color-ink-4)", marginBottom: "1px" }}>Predicted Demand</div>
-                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-2)" }}>{formatDemand(zone.predicted_demand_kwh_h)}</div>
+                    <div className="numeric" style={{ fontSize: "13px", color: "var(--color-ink-2)" }}>{formatDemand(zone.predicted_demand_kwh_h)}</div>
                   </div>
                   <div>
                     <div style={{ fontFamily: "Times New Roman, serif", fontSize: "10px", color: "var(--color-ink-4)", marginBottom: "1px" }}>Objective Score (c_j)</div>
-                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-2)" }}>{zone.qubo_c_value.toFixed(2)}</div>
+                    <div className="numeric" style={{ fontSize: "13px", color: "var(--color-ink-2)" }}>{zone.qubo_c_value.toFixed(2)}</div>
                   </div>
                 </div>
               </div>
@@ -233,15 +233,15 @@ export function ResultPanel({
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <div>
                   <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Selected Zones</div>
-                  <div style={{ fontSize: "14px" }}>{qaoa.selected_zones.join(", ") || "None"}</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.selected_zones.join(", ") || "None"}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Objective Value</div>
-                  <div style={{ fontSize: "14px" }}>{qaoa.objective_value.toFixed(4)}</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.objective_value.toFixed(4)}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>QUBO Energy</div>
-                  <div style={{ fontSize: "14px" }}>{qaoa.qubo_energy.toFixed(4)}</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.qubo_energy.toFixed(4)}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Feasibility</div>
@@ -249,7 +249,7 @@ export function ResultPanel({
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Runtime</div>
-                  <div style={{ fontSize: "14px" }}>{qaoa.runtime_s.toFixed(2)} s</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.runtime_s.toFixed(2)} s</div>
                 </div>
               </div>
             </div>
@@ -259,15 +259,15 @@ export function ResultPanel({
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Selected Zones</div>
-                  <div style={{ fontSize: "14px" }}>{classical.selected_zones.join(", ") || "None"}</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{classical.selected_zones.join(", ") || "None"}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Objective Value</div>
-                  <div style={{ fontSize: "14px" }}>{classical.objective_value.toFixed(4)}</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{classical.objective_value.toFixed(4)}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>QUBO Energy</div>
-                  <div style={{ fontSize: "14px" }}>{classical.qubo_energy.toFixed(4)}</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{classical.qubo_energy.toFixed(4)}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Feasibility</div>
@@ -275,7 +275,7 @@ export function ResultPanel({
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Runtime</div>
-                  <div style={{ fontSize: "14px" }}>{(classical.runtime_s * 1000).toFixed(1)} ms</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{(classical.runtime_s * 1000).toFixed(1)} ms</div>
                 </div>
               </div>
             </div>
@@ -288,7 +288,7 @@ export function ResultPanel({
           {[
             { label: "Circuit Depth", value: qaoa.circuit_depth },
             { label: "Ansatz Depth (p)", value: qaoa.reps },
-            { label: "Simulator Shots", value: qaoa.shots.toLocaleString() },
+            { label: "Simulator Shots", value: Intl.NumberFormat("en-US").format(qaoa.shots) },
             { label: "Success Probability", value: qaoa.success_probability ? `${(qaoa.success_probability * 100).toFixed(2)}%` : "N/A" },
             { label: "Energy Gap", value: qaoa.energy_gap.toFixed(4) },
             { label: "QUBO Qubits", value: qubo.n_qubits },
@@ -297,7 +297,7 @@ export function ResultPanel({
           ].map(({ label, value }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--color-border-subtle)" }}>
               <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-3)" }}>{label}</div>
-              <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink)", textAlign: "right" }}>{value}</div>
+              <div className="numeric" style={{ fontSize: "14px", color: "var(--color-ink)", textAlign: "right" }}>{value}</div>
             </div>
           ))}
         </div>

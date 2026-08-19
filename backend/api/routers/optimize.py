@@ -90,12 +90,13 @@ class OptimizeRequest(BaseModel):
 class ZoneDetail(BaseModel):
     label: str
     tazid: int
+    name_primary: Optional[str] = None
+    name_secondary: Optional[str] = None
     longitude: float
     latitude: float
     predicted_demand_kwh_h: float
     qubo_c_value: float
     selected: bool
-
 
 class RecommendationResponse(BaseModel):
     selected_zones: list[str]

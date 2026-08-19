@@ -199,6 +199,12 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: 8px;
 }
 
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.01em;
+}
+
 /* ── Leaflet overrides ────────────────────────────────────────── */
 .leaflet-container {
   font-family: "Times New Roman", "Times", Georgia, serif !important;

@@ -54,6 +54,7 @@ log = logging.getLogger(__name__)
 _ROOT         = Path(__file__).resolve().parents[3]   # project root
 _PARQUET      = _ROOT / "data" / "processed" / "demand_hourly.parquet"
 _ZONES_CSV    = _ROOT / "data" / "processed" / "candidate_zones.csv"
+_ZONE_NAMES_JSON = _ROOT / "data" / "processed" / "zone_names.json"
 _DIST_CSV     = _ROOT / "data" / "processed" / "candidate_distance_matrix.csv"
 _PIPELINE_PKL = _ROOT / "models" / "feature_pipeline.joblib"
 _METRICS_JSON = _ROOT / "models" / "metrics.json"
@@ -93,6 +94,7 @@ class _PipelineCache:
     test_split_end:     str   = field(default="")
     model_metrics:      dict  = field(default_factory=dict)
     zones_df:           pd.DataFrame = field(default=None)   # candidate_zones.csv
+    zone_names:         dict[str, dict] = field(default_factory=dict) # zone_names.json
     ready:              bool  = field(default=False)
 
 
@@ -246,6 +248,10 @@ def _load_cache() -> None:
 
     log.info("Loading candidate zones CSV …")
     _cache.zones_df = pd.read_csv(_ZONES_CSV)
+    if _ZONE_NAMES_JSON.exists():
+        _cache.zone_names = json.loads(_ZONE_NAMES_JSON.read_text(encoding="utf-8"))
+    else:
+        _cache.zone_names = {}
 
     _cache.ready = True
     log.info(
@@ -659,9 +665,12 @@ def run_pipeline(
     zone_details = []
     for lbl in qubo.labels:
         row = zones_df.loc[lbl]
+        names = _cache.zone_names.get(lbl, {})
         zone_details.append({
             "label":           lbl,
             "tazid":           int(row["tazid"]),
+            "name_primary":    names.get("primary"),
+            "name_secondary":  names.get("secondary"),
             "longitude":       float(row["longitude"]),
             "latitude":        float(row["latitude"]),
             "predicted_demand_kwh_h": demand_by_label[lbl],

@@ -184,7 +184,7 @@ export default function Page() {
                   <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "var(--color-navy-900)", border: "2px solid white", boxShadow: "0 1px 4px rgba(10,22,40,0.25)", flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink)" }}>{locationName}</div>
-                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)" }}>
+                    <div className="numeric" style={{ fontSize: "11px", color: "var(--color-ink-4)" }}>
                       {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E
                     </div>
                   </div>
@@ -231,7 +231,7 @@ export default function Page() {
                   <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "var(--color-navy-900)", border: "2px solid white", boxShadow: "0 1px 4px rgba(10,22,40,0.25)", flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink)" }}>{locationName}</div>
-                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)" }}>
+                    <div className="numeric" style={{ fontSize: "11px", color: "var(--color-ink-4)" }}>
                       {userLat.toFixed(4)}°N, {userLng.toFixed(4)}°E
                     </div>
                   </div>
