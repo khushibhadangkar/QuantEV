@@ -385,7 +385,7 @@ def _get_qubo_global_minimum(qubo: QUBOProblem) -> tuple[str, float, list[str]]:
         if e < best_energy:
             best_energy = e
             best_bits = bits
-            
+
     best_zones = [qubo.labels[j] for j, b in enumerate(best_bits) if b == "1"]
     return best_bits, best_energy, best_zones
 
@@ -568,7 +568,7 @@ def run_pipeline(
     # ── 2. QUBO ───────────────────────────────────────────────────────────────
     log.info("Pipeline stage 2: QUBO construction")
     qubo = _build_qubo_from_predictions(demand_by_label, station_count)
-    
+
     opt_bits, opt_energy, opt_zones = _get_qubo_global_minimum(qubo)
 
     qubo_meta = {
@@ -588,7 +588,7 @@ def run_pipeline(
     # ── 3b. QAOA ──────────────────────────────────────────────────────────────
     log.info("Pipeline stage 3b: QAOA (reps=%d shots=%d seed=%d)", reps, shots, seed)
     qaoa = _solve_qaoa(
-        qubo, reps=reps, shots=shots, seed=seed, 
+        qubo, reps=reps, shots=shots, seed=seed,
         opt_bits=opt_bits, opt_energy=opt_energy, opt_zones=opt_zones
     )
 
@@ -604,12 +604,19 @@ def run_pipeline(
 
     total_demand = sum(demand_by_label.values())
 
-    # Zone details for the recommendation
     zones_df   = _cache.zones_df.set_index("label")
     zone_details = []
     for lbl in qubo.labels:
         row = zones_df.loc[lbl]
         names = _cache.zone_names.get(lbl, {})
+        idx = qubo.labels.index(lbl)
+
+        d_j = demand_by_label[lbl]
+        c_j = float(qubo.c_values[idx])
+        self_demand_score = d_j / 100.0
+        proximity_spillover_score = c_j - self_demand_score
+        coverage_neighbors_count = int(qubo.coverage_adj[idx].sum()) - 1
+
         zone_details.append({
             "label":           lbl,
             "tazid":           int(row["tazid"]),
@@ -617,9 +624,12 @@ def run_pipeline(
             "name_secondary":  names.get("secondary"),
             "longitude":       float(row["longitude"]),
             "latitude":        float(row["latitude"]),
-            "predicted_demand_kwh_h": demand_by_label[lbl],
-            "qubo_c_value":    round(float(qubo.c_values[qubo.labels.index(lbl)]), 6),
+            "predicted_demand_kwh_h": d_j,
+            "qubo_c_value":    round(c_j, 6),
             "selected":        lbl in rec_zones,
+            "self_demand_score": round(self_demand_score, 6),
+            "proximity_spillover_score": round(proximity_spillover_score, 6),
+            "coverage_neighbors_count": coverage_neighbors_count,
         })
 
     pipeline_runtime = round(time.perf_counter() - t_total, 3)

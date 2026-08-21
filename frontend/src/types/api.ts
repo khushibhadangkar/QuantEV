@@ -34,6 +34,9 @@ export interface ZoneDetail {
   predicted_demand_kwh_h: number;
   qubo_c_value: number;
   selected: boolean;
+  self_demand_score: number;
+  proximity_spillover_score: number;
+  coverage_neighbors_count: number;
 }
 
 export interface RecommendationResponse {

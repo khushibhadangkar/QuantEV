@@ -127,6 +127,15 @@ export function ResultPanel({
         </div>
       </div>
 
+      <div style={{ padding: "12px 22px", borderBottom: "1px solid var(--color-border-subtle)", background: "rgba(10, 22, 40, 0.02)" }}>
+        <div style={{ fontFamily: "Times New Roman, serif", fontSize: "10px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "4px" }}>
+          AI Demand Prediction
+        </div>
+        <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-2)", lineHeight: 1.4 }}>
+          Random Forest model predicted <span className="numeric" style={{ color: "var(--color-ink)" }}>{formatDemand(data.recommendation.total_candidate_demand_kwh_h)}</span> across 8 zones for the <span style={{ color: "var(--color-ink)" }}>{scenarioLabel}</span> scenario.
+        </div>
+      </div>
+
       <div style={{ padding: "8px 22px", borderBottom: "1px solid var(--color-border-subtle)" }}>
         <div style={{ display: "flex", gap: "4px", background: "var(--color-grey-50)", borderRadius: "10px", padding: "3px" }}>
           {(["sites", "compare", "diagnostics"] as const).map((t) => (
@@ -178,15 +187,54 @@ export function ResultPanel({
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "16px" }}>
-                  <div>
-                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "10px", color: "var(--color-ink-4)", marginBottom: "1px" }}>Predicted Demand</div>
-                    <div className="numeric" style={{ fontSize: "13px", color: "var(--color-ink-2)" }}>{formatDemand(zone.predicted_demand_kwh_h)}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "4px" }}>
+                  <div style={{ display: "flex", gap: "24px" }}>
+                    <div>
+                      <div style={{ fontFamily: "Times New Roman, serif", fontSize: "10px", color: "var(--color-ink-4)", marginBottom: "1px" }}>Predicted Demand</div>
+                      <div className="numeric" style={{ fontSize: "13px", color: "var(--color-ink-2)" }}>{formatDemand(zone.predicted_demand_kwh_h)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: "Times New Roman, serif", fontSize: "10px", color: "var(--color-ink-4)", marginBottom: "1px" }}>Objective Score (c_j)</div>
+                      <div className="numeric" style={{ fontSize: "13px", color: "var(--color-ink-2)" }}>{zone.qubo_c_value.toFixed(2)}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "10px", color: "var(--color-ink-4)", marginBottom: "1px" }}>Objective Score (c_j)</div>
-                    <div className="numeric" style={{ fontSize: "13px", color: "var(--color-ink-2)" }}>{zone.qubo_c_value.toFixed(2)}</div>
-                  </div>
+
+                  {isSelected && (
+                    <div style={{ padding: "12px", background: "var(--color-grey-50)", borderRadius: "8px", border: "1px solid var(--color-border-subtle)" }}>
+                      <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "12px" }}>
+                        Why this site was selected
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <div>
+                          <span style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-2)", display: "block", marginBottom: "4px" }}>Captures high immediate EV demand</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ flex: 1, height: "4px", background: "rgba(10, 22, 40, 0.08)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ width: `${Math.min(100, (zone.self_demand_score / zone.qubo_c_value) * 100)}%`, height: "100%", background: "var(--color-navy-700)" }} />
+                            </div>
+                            <span className="numeric" style={{ fontSize: "11px", color: "var(--color-ink-4)", minWidth: "32px", textAlign: "right" }}>{zone.self_demand_score.toFixed(1)}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-2)", display: "block", marginBottom: "4px" }}>Supports nearby underserved areas</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ flex: 1, height: "4px", background: "rgba(10, 22, 40, 0.08)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ width: `${Math.min(100, (zone.proximity_spillover_score / zone.qubo_c_value) * 100)}%`, height: "100%", background: "var(--color-navy-400)" }} />
+                            </div>
+                            <span className="numeric" style={{ fontSize: "11px", color: "var(--color-ink-4)", minWidth: "32px", textAlign: "right" }}>{zone.proximity_spillover_score.toFixed(1)}</span>
+                          </div>
+                        </div>
+
+                        <div style={{ borderTop: "1px dashed rgba(10, 22, 40, 0.1)", margin: "2px 0" }} />
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-2)" }}>Network reach</span>
+                          <span style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-4)" }}>Covers <strong style={{ color: "var(--color-ink)" }}>{zone.coverage_neighbors_count}</strong> adjacent zones</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -211,7 +259,7 @@ export function ResultPanel({
                   <path d="M2 6l3 3 5-5" stroke="var(--color-positive)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-positive)" }}>
-                  QAOA found the exact global QUBO optimum
+                  QAOA matches the exact mathematical optimum
                 </span>
               </div>
             ) : (
@@ -227,79 +275,121 @@ export function ResultPanel({
             )}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div style={{ padding: "12px", borderRadius: "10px", background: "var(--color-navy-900)", color: "white" }}>
-              <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", marginBottom: "8px" }}>QAOA</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)", marginBottom: "8px" }}>QAOA Solution</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                 <div>
                   <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Selected Zones</div>
                   <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.selected_zones.join(", ") || "None"}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Objective Value</div>
-                  <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.objective_value.toFixed(4)}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>QUBO Energy</div>
                   <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.qubo_energy.toFixed(4)}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Feasibility</div>
-                  <div style={{ fontSize: "14px" }}>{qaoa.feasible ? "Valid" : "Invalid"}</div>
+                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Objective Score</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.objective_value.toFixed(4)}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Runtime</div>
-                  <div className="numeric" style={{ fontSize: "14px" }}>{qaoa.runtime_s.toFixed(2)} s</div>
+                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Feasibility</div>
+                  <div style={{ fontSize: "14px" }}>{qaoa.feasible ? "Valid" : "Invalid"}</div>
                 </div>
               </div>
             </div>
 
             <div style={{ padding: "12px", borderRadius: "10px", background: "var(--color-grey-50)", border: "1px solid var(--color-border)", color: "var(--color-ink)" }}>
-              <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "8px" }}>Classical</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "8px" }}>Classical Verification</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                 <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Selected Zones</div>
                   <div className="numeric" style={{ fontSize: "14px" }}>{classical.selected_zones.join(", ") || "None"}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Objective Value</div>
-                  <div className="numeric" style={{ fontSize: "14px" }}>{classical.objective_value.toFixed(4)}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>QUBO Energy</div>
                   <div className="numeric" style={{ fontSize: "14px" }}>{classical.qubo_energy.toFixed(4)}</div>
                 </div>
                 <div>
+                  <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Objective Score</div>
+                  <div className="numeric" style={{ fontSize: "14px" }}>{classical.objective_value.toFixed(4)}</div>
+                </div>
+                <div>
                   <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Feasibility</div>
                   <div style={{ fontSize: "14px" }}>{classical.feasible ? "Valid" : "Invalid"}</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: "10px", color: "var(--color-ink-4)" }}>Runtime</div>
-                  <div className="numeric" style={{ fontSize: "14px" }}>{(classical.runtime_s * 1000).toFixed(1)} ms</div>
+              </div>
+              <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px dashed var(--color-border-subtle)" }}>
+                <div style={{ fontSize: "10px", color: "var(--color-ink-4)", marginBottom: "2px" }}>Informational Coverage</div>
+                <div style={{ fontSize: "13px" }}>
+                  <span className="numeric">{formatDemand(classical.covered_demand_kwh_h)}</span> ({(classical.coverage_pct * 100).toFixed(1)}%)
                 </div>
               </div>
             </div>
+
+            <div style={{ padding: "12px", borderRadius: "10px", background: "transparent", border: "1px dashed var(--color-border)", color: "var(--color-ink)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "2px" }}>Theoretical QUBO Optimum</div>
+                  <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-3)" }}>Absolute global minimum over all 256 states</div>
+                </div>
+                <div className="numeric" style={{ fontSize: "14px", color: "var(--color-ink)" }}>
+                  {qubo.global_minimum_energy.toFixed(4)}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
 
       {activeTab === "diagnostics" && (
-        <div style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: "10px" }}>
-          {[
-            { label: "Circuit Depth", value: qaoa.circuit_depth },
-            { label: "Ansatz Depth (p)", value: qaoa.reps },
-            { label: "Simulator Shots", value: Intl.NumberFormat("en-US").format(qaoa.shots) },
-            { label: "Success Probability", value: qaoa.success_probability ? `${(qaoa.success_probability * 100).toFixed(2)}%` : "N/A" },
-            { label: "Energy Gap", value: qaoa.energy_gap.toFixed(4) },
-            { label: "QUBO Qubits", value: qubo.n_qubits },
-            { label: "Penalty Lambda", value: qubo.lambda.toFixed(1) },
-            { label: "Total Pipeline Time", value: `${pipeline_runtime_s.toFixed(2)} s` },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--color-border-subtle)" }}>
-              <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-3)" }}>{label}</div>
-              <div className="numeric" style={{ fontSize: "14px", color: "var(--color-ink)", textAlign: "right" }}>{value}</div>
+        <div style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", paddingBottom: "16px", borderBottom: "1px solid var(--color-border-subtle)" }}>
+            {[
+              { label: "Circuit Depth", value: qaoa.circuit_depth },
+              { label: "Simulator Shots", value: Intl.NumberFormat("en-US").format(qaoa.shots) },
+              { label: "Success Prob.", value: qaoa.success_probability ? `${(qaoa.success_probability * 100).toFixed(1)}%` : "N/A" },
+              { label: "Energy Gap", value: qaoa.energy_gap.toFixed(4) },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)", marginBottom: "2px" }}>{label}</div>
+                <div className="numeric" style={{ fontSize: "14px", color: "var(--color-ink)" }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginBottom: "12px" }}>
+              Measurement Distribution (Top Samples)
             </div>
-          ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {qaoa.top10_samples.slice(0, 5).map((sample) => {
+                const isOptimal = sample.bitstring === qaoa.best_bitstring && qaoa.matches_qubo_optimum;
+                return (
+                  <div key={sample.bitstring} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span className="numeric" style={{ fontSize: "13px", color: "var(--color-ink)", letterSpacing: "0.05em" }}>|{sample.bitstring}⟩</span>
+                        {isOptimal ? (
+                          <span style={{ fontFamily: "Times New Roman, serif", fontSize: "9px", padding: "2px 4px", borderRadius: "4px", background: "var(--color-positive-bg)", color: "var(--color-positive)", letterSpacing: "0.05em" }}>OPTIMAL</span>
+                        ) : sample.feasible ? (
+                          <span style={{ fontFamily: "Times New Roman, serif", fontSize: "9px", padding: "2px 4px", borderRadius: "4px", background: "var(--color-grey-100)", color: "var(--color-ink-3)", letterSpacing: "0.05em" }}>FEASIBLE</span>
+                        ) : null}
+                      </div>
+                      <span className="numeric" style={{ fontSize: "13px", color: "var(--color-ink)" }}>{(sample.probability * 100).toFixed(1)}%</span>
+                    </div>
+                    <div style={{ width: "100%", height: "6px", background: "rgba(10, 22, 40, 0.05)", borderRadius: "3px", overflow: "hidden" }}>
+                      {/* Calculate a visual width ratio based on the max probability (which is likely the first sample) */}
+                      <div style={{ width: `${(sample.probability / qaoa.top10_samples[0].probability) * 100}%`, height: "100%", background: isOptimal ? "var(--color-navy-700)" : sample.feasible ? "var(--color-navy-400)" : "var(--color-grey-300)" }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: "16px", fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)", textAlign: "center" }}>
+              Displaying top 5 states from {qaoa.shots} shots
+            </div>
+          </div>
         </div>
       )}
 

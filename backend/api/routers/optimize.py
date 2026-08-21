@@ -97,6 +97,9 @@ class ZoneDetail(BaseModel):
     predicted_demand_kwh_h: float
     qubo_c_value: float
     selected: bool
+    self_demand_score: float
+    proximity_spillover_score: float
+    coverage_neighbors_count: int
 
 class RecommendationResponse(BaseModel):
     selected_zones: list[str]

@@ -281,20 +281,11 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
           const maxDemand = Math.max(...zones.map((z) => z.predicted_demand_kwh_h), 1);
           const [uLat, uLng] = userLatLngRef.current;
 
-          // Non-selected: faint demand circles
+          // Non-selected: muted markers
           zones.filter((z) => !selectedSet.has(z.label)).forEach((z) => {
-            const c = L.circle([z.latitude, z.longitude], {
-              radius: 600 + (z.predicted_demand_kwh_h / maxDemand) * 900,
-              color: "rgba(10,22,40,0.1)",
-              fillColor: "rgba(10,22,40,0.04)",
-              fillOpacity: 1,
-              weight: 1,
-            }).addTo(map);
-            layersRef.current.push(c);
-
             const icon = L.divIcon({
               className: "",
-              html: `<div style="width:16px;height:16px;border-radius:50%;background:white;border:1.5px solid rgba(10,22,40,0.25);box-shadow:0 2px 6px rgba(10,22,40,0.1);transform:translate(-8px,-8px);animation:station-appear 0.45s cubic-bezier(0.22,1,0.36,1) both;"></div>`,
+              html: `<div style="width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,0.9);border:1px solid rgba(10,22,40,0.15);box-shadow:0 1px 3px rgba(10,22,40,0.05);transform:translate(-6px,-6px);"></div>`,
               iconSize: [0, 0], iconAnchor: [0, 0],
             });
             const dist = haversine(uLat, uLng, z.latitude, z.longitude);
@@ -321,11 +312,11 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
               // Coverage circle
               const cov = L.circle([z.latitude, z.longitude], {
                 radius: 1500,
-                color: "rgba(10,22,40,0.18)",
-                fillColor: "rgba(10,22,40,0.05)",
+                color: "rgba(10,22,40,0.12)",
+                fillColor: "rgba(10,22,40,0.03)",
                 fillOpacity: 1,
-                weight: 1.5,
-                dashArray: "4 5",
+                weight: 1,
+                dashArray: "3 6",
               }).addTo(mapRef.current);
               layersRef.current.push(cov);
 
