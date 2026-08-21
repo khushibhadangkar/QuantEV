@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import traceback
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
@@ -22,6 +22,15 @@ from backend.api.services import optimizer as svc
 
 log = logging.getLogger(__name__)
 router = APIRouter()
+
+ScenarioType = Literal[
+    "all_hours",
+    "morning_peak",
+    "afternoon",
+    "overnight",
+    "weekday",
+    "weekend",
+]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -33,6 +42,16 @@ class OptimizeRequest(BaseModel):
     Parameters for the optimization run.  All fields are optional — omitting
     them applies the validated defaults from experiments/08.
     """
+    station_count: int = Field(
+        default=3,
+        ge=1,
+        le=8,
+        description="Number of charging stations to place.",
+    )
+    scenario: ScenarioType = Field(
+        default="all_hours",
+        description="Planning demand scenario (all_hours, morning_peak, afternoon, overnight, weekday, weekend).",
+    )
     reps: int = Field(
         default=1,
         ge=1,
@@ -51,7 +70,17 @@ class OptimizeRequest(BaseModel):
         description="Random seed for AerSimulator + COBYLA (reproducibility).",
     )
 
-    model_config = {"json_schema_extra": {"example": {"reps": 1, "shots": 2048, "seed": 42}}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "station_count": 3,
+                "scenario": "all_hours",
+                "reps": 1,
+                "shots": 2048,
+                "seed": 42,
+            }
+        }
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -61,15 +90,20 @@ class OptimizeRequest(BaseModel):
 class ZoneDetail(BaseModel):
     label: str
     tazid: int
+    name_primary: Optional[str] = None
+    name_secondary: Optional[str] = None
     longitude: float
     latitude: float
     predicted_demand_kwh_h: float
     qubo_c_value: float
     selected: bool
-
+    self_demand_score: float
+    proximity_spillover_score: float
+    coverage_neighbors_count: int
 
 class RecommendationResponse(BaseModel):
     selected_zones: list[str]
+    scenario: str = "all_hours"
     method: str
     qubo_energy: float
     feasible: bool
@@ -82,6 +116,7 @@ class RecommendationResponse(BaseModel):
 
 class AIDemandResponse(BaseModel):
     model: str
+    scenario: str = "all_hours"
     test_r2: Optional[float]
     test_mae: Optional[float]
     test_split_start: str
@@ -112,6 +147,7 @@ class SampleEntry(BaseModel):
 class ClassicalResult(BaseModel):
     method: str
     selected_zones: list[str]
+    objective_value: float
     qubo_energy: float
     feasible: bool
     n_stations: int
@@ -128,6 +164,7 @@ class QAOAResult(BaseModel):
     selected_zones: list[str]
     best_bitstring: str
     qubo_energy: float
+    objective_value: float
     feasible: bool
     n_stations: int
     success_probability: float
@@ -208,6 +245,8 @@ async def run_optimize(request: OptimizeRequest) -> OptimizeResponse:
     )
     try:
         raw = svc.run_pipeline(
+            station_count=request.station_count,
+            scenario=request.scenario,
             reps=request.reps,
             shots=request.shots,
             seed=request.seed,

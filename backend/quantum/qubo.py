@@ -104,7 +104,6 @@ import pandas as pd
 # ── Constants ─────────────────────────────────────────────────────────────────
 D_MIN_M: float = 100.0   # minimum effective distance (metres) — prevents 1/0
 LAMBDA:  float = 10.0    # penalty weight for the budget constraint
-BUDGET_K: int  = 3       # exactly K stations to place
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -185,18 +184,21 @@ class QUBOProblem:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_qubo(
-    zones_csv:    Path,
+    zones_csv:    Path | pd.DataFrame,
     dist_csv:     Path,
+    budget:       int,
     lam:          float = LAMBDA,
-    budget:       int   = BUDGET_K,
     d_min_m:      float = D_MIN_M,
 ) -> QUBOProblem:
     """
-    Construct the QUBO from the processed candidate-zone CSVs.
+    Construct the QUBO from the processed candidate-zone data.
 
     Parameters
     ----------
-    zones_csv : path to data/processed/candidate_zones.csv
+    zones_csv : path to candidate_zones.csv, or a DataFrame with the same
+                columns (label, mean_pred_kwh, neighbors_3km, …).
+                Passing a DataFrame avoids a temporary-file round-trip when
+                the caller already holds the data in memory.
     dist_csv  : path to data/processed/candidate_distance_matrix.csv
     lam       : penalty weight λ (default 10.0)
     budget    : K stations to place (default 3)
@@ -206,7 +208,7 @@ def build_qubo(
     -------
     QUBOProblem with Q_upper, Q_sym, c_values, and all derived fields.
     """
-    zones = pd.read_csv(zones_csv)
+    zones = pd.read_csv(zones_csv) if isinstance(zones_csv, (str, Path)) else zones_csv
     dist  = pd.read_csv(dist_csv, index_col=0)
 
     labels  = zones["label"].tolist()

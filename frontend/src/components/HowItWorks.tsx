@@ -61,23 +61,33 @@ export function HowItWorks({ data }: HowItWorksProps) {
           </p>
         </div>
 
-        {/* Three steps */}
+        {/* Five steps */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0", marginBottom: "48px" }}>
           {[
             {
               num: "01",
-              title: "AI forecasts demand at each candidate site",
-              body: "QuantEV is trained on historical EV charging patterns across Shenzhen. For each of the 8 candidate zones, it predicts hourly electricity demand — accounting for time of day, day of week, and seasonal trends.",
+              title: "AI Demand Prediction",
+              body: "A Random Forest machine learning model predicts the future EV charging demand (in kWh) needed at each candidate site, based on historical patterns and the selected temporal scenario.",
             },
             {
               num: "02",
-              title: "A mathematical model evaluates every placement combination",
-              body: "With 8 candidate sites and a fixed budget of 3 stations, there are 56 possible configurations. QuantEV evaluates all of them simultaneously — balancing predicted demand, geographic coverage, and proximity between sites.",
+              title: "Mathematical Objective",
+              body: "The problem is formulated as a proximity-weighted demand objective. It balances the local predicted demand of a site with the spillover coverage it provides to nearby zones within a 3km radius.",
             },
             {
               num: "03",
-              title: "Quantum optimisation finds the globally best placement",
-              body: "The placement problem is solved using a quantum optimisation algorithm running on a quantum circuit simulator. This finds the configuration that maximises total predicted demand coverage across the network — the globally optimal infrastructure plan.",
+              title: "Quantum Mapping (QUBO)",
+              body: "This objective is mathematically encoded into a Quadratic Unconstrained Binary Optimization (QUBO) problem. An 8-qubit system is constructed, with penalty parameters enforcing the exact constraint of K stations.",
+            },
+            {
+              num: "04",
+              title: "Quantum Optimization (QAOA)",
+              body: "A Quantum Approximate Optimization Algorithm (QAOA) circuit is executed on a quantum simulator. By evolving the quantum state over multiple layers, it converges toward the optimal infrastructure layout.",
+            },
+            {
+              num: "05",
+              title: "Classical Verification",
+              body: "An exhaustive classical solver simultaneously evaluates all 256 possible states to find the absolute global mathematical minimum. The QAOA result is then verified against this theoretical optimum to guarantee correctness.",
             },
           ].map(({ num, title, body }, i) => (
             <div
@@ -87,7 +97,7 @@ export function HowItWorks({ data }: HowItWorksProps) {
                 gap: "24px",
                 padding: "28px 0",
                 borderBottom:
-                  i < 2 ? "1px solid var(--color-border-subtle)" : "none",
+                  i < 4 ? "1px solid var(--color-border-subtle)" : "none",
               }}
             >
               <div

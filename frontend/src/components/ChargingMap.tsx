@@ -69,46 +69,61 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
       layersRef.current = [];
     }, []);
 
-    const initMap = useCallback(async () => {
-      if (!containerRef.current || mapRef.current) return;
-      const L = (await import("leaflet")).default;
-      const el = containerRef.current;
-      el.style.width = "100%";
-      el.style.height = "100%";
-
-      const map = L.map(el, {
-        center: [22.625, 114.075],
-        zoom: 13,
-        zoomControl: false,
-        scrollWheelZoom: true,
-        attributionControl: true,
-      });
-
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        subdomains: "abcd",
-        maxZoom: 19,
-      }).addTo(map);
-
-      L.control.zoom({ position: "bottomright" }).addTo(map);
-      mapRef.current = map;
-      requestAnimationFrame(() => map.invalidateSize());
-      setTimeout(() => mapRef.current?.invalidateSize(), 300);
-      onReady?.();
-    }, [onReady]);
-
     useEffect(() => {
-      initMap();
+      let cancelled = false;
       let ro: ResizeObserver | null = null;
-      if (containerRef.current && typeof ResizeObserver !== "undefined") {
-        ro = new ResizeObserver(() => mapRef.current?.invalidateSize());
-        ro.observe(containerRef.current);
-      }
+
+      (async () => {
+        const el = containerRef.current;
+        if (!el) return;
+
+        const L = (await import("leaflet")).default;
+
+        // Guard: if this effect was cleaned up while we awaited the import,
+        // or if another mount already initialised the map on this container,
+        // bail out to avoid the "Map container is already initialized" error.
+        if (cancelled || mapRef.current) return;
+        if ((el as any)._leaflet_id) return;
+
+        el.style.width = "100%";
+        el.style.height = "100%";
+
+        const map = L.map(el, {
+          center: [22.625, 114.075],
+          zoom: 13,
+          zoomControl: false,
+          scrollWheelZoom: true,
+          attributionControl: true,
+        });
+
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+          attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          subdomains: "abcd",
+          maxZoom: 19,
+        }).addTo(map);
+
+        L.control.zoom({ position: "bottomright" }).addTo(map);
+        mapRef.current = map;
+        requestAnimationFrame(() => map.invalidateSize());
+        setTimeout(() => mapRef.current?.invalidateSize(), 300);
+        onReady?.();
+
+        if (el && typeof ResizeObserver !== "undefined") {
+          ro = new ResizeObserver(() => mapRef.current?.invalidateSize());
+          ro.observe(el);
+        }
+      })();
+
       return () => {
+        cancelled = true;
         ro?.disconnect();
-        if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+        if (mapRef.current) {
+          try { mapRef.current.remove(); } catch {}
+          mapRef.current = null;
+        }
       };
-    }, [initMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useImperativeHandle(ref, () => ({
 
@@ -266,20 +281,11 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
           const maxDemand = Math.max(...zones.map((z) => z.predicted_demand_kwh_h), 1);
           const [uLat, uLng] = userLatLngRef.current;
 
-          // Non-selected: faint demand circles
+          // Non-selected: muted markers
           zones.filter((z) => !selectedSet.has(z.label)).forEach((z) => {
-            const c = L.circle([z.latitude, z.longitude], {
-              radius: 600 + (z.predicted_demand_kwh_h / maxDemand) * 900,
-              color: "rgba(10,22,40,0.1)",
-              fillColor: "rgba(10,22,40,0.04)",
-              fillOpacity: 1,
-              weight: 1,
-            }).addTo(map);
-            layersRef.current.push(c);
-
             const icon = L.divIcon({
               className: "",
-              html: `<div style="width:16px;height:16px;border-radius:50%;background:white;border:1.5px solid rgba(10,22,40,0.25);box-shadow:0 2px 6px rgba(10,22,40,0.1);transform:translate(-8px,-8px);animation:station-appear 0.45s cubic-bezier(0.22,1,0.36,1) both;"></div>`,
+              html: `<div style="width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,0.9);border:1px solid rgba(10,22,40,0.15);box-shadow:0 1px 3px rgba(10,22,40,0.05);transform:translate(-6px,-6px);"></div>`,
               iconSize: [0, 0], iconAnchor: [0, 0],
             });
             const dist = haversine(uLat, uLng, z.latitude, z.longitude);
@@ -306,11 +312,11 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
               // Coverage circle
               const cov = L.circle([z.latitude, z.longitude], {
                 radius: 1500,
-                color: "rgba(10,22,40,0.18)",
-                fillColor: "rgba(10,22,40,0.05)",
+                color: "rgba(10,22,40,0.12)",
+                fillColor: "rgba(10,22,40,0.03)",
                 fillOpacity: 1,
-                weight: 1.5,
-                dashArray: "4 5",
+                weight: 1,
+                dashArray: "3 6",
               }).addTo(mapRef.current);
               layersRef.current.push(cov);
 

@@ -6,7 +6,17 @@
 
 // ── Request ─────────────────────────────────────────────────────────────────
 
+export type PlanningScenario =
+  | "all_hours"
+  | "morning_peak"
+  | "afternoon"
+  | "overnight"
+  | "weekday"
+  | "weekend";
+
 export interface OptimizeRequest {
+  station_count?: number; // 1-8
+  scenario?: PlanningScenario;
   reps?: number;   // 1–5, default 1
   shots?: number;  // 128–16384, default 2048
   seed?: number;   // ≥ 0, default 42
@@ -17,15 +27,21 @@ export interface OptimizeRequest {
 export interface ZoneDetail {
   label: string;
   tazid: number;
+  name_primary?: string;
+  name_secondary?: string;
   longitude: number;
   latitude: number;
   predicted_demand_kwh_h: number;
   qubo_c_value: number;
   selected: boolean;
+  self_demand_score: number;
+  proximity_spillover_score: number;
+  coverage_neighbors_count: number;
 }
 
 export interface RecommendationResponse {
   selected_zones: string[];
+  scenario?: string;
   method: string;
   qubo_energy: number;
   feasible: boolean;
@@ -38,6 +54,7 @@ export interface RecommendationResponse {
 
 export interface AIDemandResponse {
   model: string;
+  scenario?: string;
   test_r2: number | null;
   test_mae: number | null;
   test_split_start: string;
@@ -66,6 +83,7 @@ export interface SampleEntry {
 export interface ClassicalResult {
   method: string;
   selected_zones: string[];
+  objective_value: number;
   qubo_energy: number;
   feasible: boolean;
   n_stations: number;
@@ -82,6 +100,7 @@ export interface QAOAResult {
   selected_zones: string[];
   best_bitstring: string;
   qubo_energy: number;
+  objective_value: number;
   feasible: boolean;
   n_stations: number;
   success_probability: number;

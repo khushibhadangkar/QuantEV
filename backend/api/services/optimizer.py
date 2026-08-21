@@ -8,7 +8,7 @@ API.  It reuses every existing function unchanged:
 
     backend.ai.features          build_features(), chronological_split()
     backend.quantum.qubo         build_qubo(), QUBOProblem
-    backend.optimization.classical_solver   PlacementProblem, solve_exhaustive()
+    backend.optimization.classical_solver   PlacementProblem, solve_exhaustive(), solve_proximity_weighted(), covered_demand()
 
 The QAOA helpers are inlined here (same logic as experiments/05 and 08) because
 those experiment scripts are standalone CLIs, not importable modules.
@@ -46,8 +46,7 @@ from backend.ai.features import (
     build_features,
     chronological_split,
 )
-from backend.quantum.qubo import build_qubo, QUBOProblem
-from backend.optimization.classical_solver import PlacementProblem, solve_exhaustive
+from backend.quantum.qubo import build_qubo, QUBOProblem, objective_value as qubo_objective_value
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +54,7 @@ log = logging.getLogger(__name__)
 _ROOT         = Path(__file__).resolve().parents[3]   # project root
 _PARQUET      = _ROOT / "data" / "processed" / "demand_hourly.parquet"
 _ZONES_CSV    = _ROOT / "data" / "processed" / "candidate_zones.csv"
+_ZONE_NAMES_JSON = _ROOT / "data" / "processed" / "zone_names.json"
 _DIST_CSV     = _ROOT / "data" / "processed" / "candidate_distance_matrix.csv"
 _PIPELINE_PKL = _ROOT / "models" / "feature_pipeline.joblib"
 _METRICS_JSON = _ROOT / "models" / "metrics.json"
@@ -67,9 +67,10 @@ _LABEL_TO_TAZID: dict[str, int] = {
 _CANDIDATE_TAZIDS = list(_LABEL_TO_TAZID.values())
 
 # ── Known QUBO ground truth (qubo_validation.json — 9/9 checks passed) ───────
-_QUBO_OPT_ZONES  = ["Z0", "Z2", "Z3"]
-_QUBO_OPT_ENERGY = -139.697448
-_QUBO_OPT_BITS   = "10110000"
+# These are kept for reference, but the pipeline now computes the optimum dynamically for any K.
+_QUBO_OPT_ZONES_K3  = ["Z0", "Z2", "Z3"]
+_QUBO_OPT_ENERGY_K3 = -139.697448
+_QUBO_OPT_BITS_K3   = "10110000"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -85,13 +86,16 @@ class _PipelineCache:
     test_frame:    pd.DataFrame = field(default=None)   # chronological test split
     # Pre-extracted numpy arrays — immune to PyArrow allocator corruption
     # that can occur after Qiskit C-extension imports on the 2nd+ request.
-    X_test_np:     Any   = field(default=None)   # np.ndarray (n_samples, n_features)
-    test_zone_ids: Any   = field(default=None)   # np.ndarray of zone_id per row
-    test_split_start: str = field(default="")
-    test_split_end:   str = field(default="")
-    model_metrics: dict = field(default_factory=dict)
-    zones_df:      pd.DataFrame = field(default=None)   # candidate_zones.csv
-    ready:         bool = field(default=False)
+    X_test_np:          Any   = field(default=None)   # np.ndarray (n_samples, n_features)
+    test_zone_ids:      Any   = field(default=None)   # np.ndarray of zone_id per row
+    test_hours_np:      Any   = field(default=None)   # np.ndarray of hour per row
+    test_is_weekend_np: Any   = field(default=None)   # np.ndarray of is_weekend per row
+    test_split_start:   str   = field(default="")
+    test_split_end:     str   = field(default="")
+    model_metrics:      dict  = field(default_factory=dict)
+    zones_df:           pd.DataFrame = field(default=None)   # candidate_zones.csv
+    zone_names:         dict[str, dict] = field(default_factory=dict) # zone_names.json
+    ready:              bool  = field(default=False)
 
 
 _cache = _PipelineCache()
@@ -200,10 +204,12 @@ def _load_cache() -> None:
     # ── Step 4: extract numpy arrays, then FREE all DataFrames ───────────────
     # This is the critical step: delete the large DataFrames BEFORE loading the
     # pipeline so their memory is available for the pipeline load.
-    _cache.X_test_np      = _cache.test_frame[FEATURE_COLS].to_numpy(dtype=float)
-    _cache.test_zone_ids  = _cache.test_frame["zone_id"].to_numpy()
-    _cache.test_split_start = str(_cache.test_frame["time"].min())
-    _cache.test_split_end   = str(_cache.test_frame["time"].max())
+    _cache.X_test_np          = _cache.test_frame[FEATURE_COLS].to_numpy(dtype=float)
+    _cache.test_zone_ids      = _cache.test_frame["zone_id"].to_numpy()
+    _cache.test_hours_np      = _cache.test_frame["hour"].to_numpy(dtype=int)
+    _cache.test_is_weekend_np = _cache.test_frame["is_weekend"].to_numpy(dtype=int)
+    _cache.test_split_start   = str(_cache.test_frame["time"].min())
+    _cache.test_split_end     = str(_cache.test_frame["time"].max())
 
     log.info(
         "X_test_np shape=%s, zone_ids=%d unique",
@@ -242,6 +248,10 @@ def _load_cache() -> None:
 
     log.info("Loading candidate zones CSV …")
     _cache.zones_df = pd.read_csv(_ZONES_CSV)
+    if _ZONE_NAMES_JSON.exists():
+        _cache.zone_names = json.loads(_ZONE_NAMES_JSON.read_text(encoding="utf-8"))
+    else:
+        _cache.zone_names = {}
 
     _cache.ready = True
     log.info(
@@ -254,43 +264,78 @@ def _load_cache() -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Stage 1 — AI demand prediction
+# Stage 1 — AI demand prediction (scenario-conditioned)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _predict_demand() -> tuple[dict[str, float], dict]:
+VALID_SCENARIOS = {
+    "all_hours",
+    "morning_peak",
+    "afternoon",
+    "overnight",
+    "weekday",
+    "weekend",
+}
+
+
+def _predict_demand(scenario: str = "all_hours") -> tuple[dict[str, float], dict]:
     """
-    Run the RF pipeline on the test split and return per-zone mean predicted
-    demand (kWh/h).
+    Run the RF pipeline on the test split filtered by scenario and return
+    per-zone mean predicted demand (kWh/h).
+
+    Parameters
+    ----------
+    scenario : str
+        One of 'all_hours', 'morning_peak', 'afternoon', 'overnight', 'weekday', 'weekend'.
 
     Returns
     -------
     demand_by_label  : {"Z0": 3741.33, "Z1": 236.74, ...}
     ai_meta          : diagnostics dict included in the API response
     """
+    if scenario not in VALID_SCENARIOS:
+        raise ValueError(f"Invalid scenario '{scenario}'. Must be one of {sorted(VALID_SCENARIOS)}")
+
     _load_cache()
 
-    # Use the pre-extracted numpy arrays (populated at cache load time, before
-    # any Qiskit import).  This avoids the PyArrow allocator corruption that
-    # causes ArrowException on the 2nd+ request when the DataFrame is re-accessed
-    # after Qiskit C-extensions have been loaded.
-    X_test = _cache.X_test_np
+    # Use pre-extracted numpy arrays
+    X_test     = _cache.X_test_np
+    zone_ids   = _cache.test_zone_ids
+    hours      = _cache.test_hours_np
+    is_weekend = _cache.test_is_weekend_np
 
-    t0     = time.perf_counter()
-    y_pred = _cache.pipeline.predict(X_test)
+    # Scenario filtering mask
+    if scenario == "morning_peak":
+        mask = np.isin(hours, [7, 8, 9, 10, 11])
+    elif scenario == "afternoon":
+        mask = np.isin(hours, [12, 13, 14, 15, 16, 17, 18])
+    elif scenario == "overnight":
+        mask = np.isin(hours, [0, 1, 2, 3, 4, 5, 6])
+    elif scenario == "weekday":
+        mask = (is_weekend == 0)
+    elif scenario == "weekend":
+        mask = (is_weekend == 1)
+    else:  # "all_hours"
+        mask = np.ones(len(X_test), dtype=bool)
+
+    X_sub        = X_test[mask]
+    zone_ids_sub = zone_ids[mask]
+
+    t0      = time.perf_counter()
+    y_pred  = _cache.pipeline.predict(X_sub)
     pred_ms = (time.perf_counter() - t0) * 1000
 
-    # Aggregate per zone using the pre-extracted zone_id array
-    zone_ids = _cache.test_zone_ids
+    # Aggregate per zone using the scenario-masked zone_id array
     demand_by_label: dict[str, float] = {}
     for lbl, tazid in _LABEL_TO_TAZID.items():
-        mask = zone_ids == tazid
-        if mask.any():
-            demand_by_label[lbl] = round(float(y_pred[mask].mean()), 4)
+        z_mask = zone_ids_sub == tazid
+        if z_mask.any():
+            demand_by_label[lbl] = round(float(y_pred[z_mask].mean()), 4)
         else:
             demand_by_label[lbl] = 0.0
 
     ai_meta = {
         "model":             _cache.model_metrics.get("model", "RandomForestRegressor"),
+        "scenario":          scenario,
         "test_r2":           _cache.model_metrics.get("test_metrics", {}).get("r2"),
         "test_mae":          _cache.model_metrics.get("test_metrics", {}).get("mae"),
         "test_split_start":  _cache.test_split_start,
@@ -298,7 +343,7 @@ def _predict_demand() -> tuple[dict[str, float], dict]:
         "prediction_time_ms": round(pred_ms, 2),
         "predicted_demand":  demand_by_label,
     }
-    log.info("AI prediction done in %.1f ms", pred_ms)
+    log.info("AI prediction (%s) done in %.1f ms", scenario, pred_ms)
     return demand_by_label, ai_meta
 
 
@@ -306,9 +351,10 @@ def _predict_demand() -> tuple[dict[str, float], dict]:
 # Stage 2 — QUBO construction
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _build_qubo_from_predictions(demand_by_label: dict[str, float]) -> QUBOProblem:
+def _build_qubo_from_predictions(demand_by_label: dict[str, float], station_count: int) -> QUBOProblem:
     """
-    Write a temporary zones CSV with live predictions and call build_qubo().
+    Build QUBO from live predictions by passing an in-memory DataFrame
+    directly to build_qubo().  No temporary file is created.
     The distance matrix and all other columns are unchanged.
     """
     _load_cache()
@@ -317,52 +363,31 @@ def _build_qubo_from_predictions(demand_by_label: dict[str, float]) -> QUBOProbl
     for lbl, d in demand_by_label.items():
         zones_df.loc[zones_df["label"] == lbl, "mean_pred_kwh"] = d
 
-    tmp_csv = _ZONES_CSV.parent / "_api_qubo_tmp.csv"
-    try:
-        zones_df.to_csv(tmp_csv, index=False)
-        qubo = build_qubo(zones_csv=tmp_csv, dist_csv=_DIST_CSV)
-    finally:
-        tmp_csv.unlink(missing_ok=True)
+    qubo = build_qubo(zones_csv=zones_df, dist_csv=_DIST_CSV, budget=station_count)
 
     log.info(
-        "QUBO built: n=%d  K=%d  λ=%.1f  E(opt_bits)=%.4f",
-        qubo.n, qubo.budget, qubo.lam,
-        qubo.energy(qubo.bitstring_to_x(_QUBO_OPT_BITS)),
+        "QUBO built: n=%d  K=%d  λ=%.1f",
+        qubo.n, qubo.budget, qubo.lam
     )
     return qubo
 
+def _get_qubo_global_minimum(qubo: QUBOProblem) -> tuple[str, float, list[str]]:
+    """
+    Compute the absolute global minimum of the QUBO by exhaustive evaluation over all 2^n states.
+    For n=8, this is only 256 evaluations, which takes < 1 ms.
+    """
+    best_energy = float("inf")
+    best_bits = None
+    for val in range(2**qubo.n):
+        bits = format(val, f"0{qubo.n}b")
+        x = np.array([int(b) for b in bits], dtype=float)
+        e = qubo.energy(x)
+        if e < best_energy:
+            best_energy = e
+            best_bits = bits
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stage 3a — Classical solver
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _solve_classical(qubo: QUBOProblem) -> dict:
-    """Run exhaustive coverage solver (unchanged) and return compact result."""
-    problem = PlacementProblem(
-        labels       = qubo.labels,
-        demands      = qubo.demands,
-        coverage_adj = qubo.coverage_adj,
-        budget       = qubo.budget,
-    )
-    t0     = time.perf_counter()
-    output = solve_exhaustive(problem)
-    rt     = time.perf_counter() - t0
-
-    best  = output.best
-    x_vec = np.zeros(qubo.n)
-    for idx in best.station_idxs:
-        x_vec[idx] = 1.0
-
-    return {
-        "method":               "classical_exhaustive",
-        "selected_zones":       best.stations,
-        "qubo_energy":          round(float(qubo.energy(x_vec)), 6),
-        "feasible":             True,
-        "n_stations":           len(best.stations),
-        "covered_demand_kwh_h": round(best.covered_demand, 4),
-        "coverage_pct":         round(best.coverage_pct, 4),
-        "runtime_s":            round(rt, 6),
-    }
+    best_zones = [qubo.labels[j] for j, b in enumerate(best_bits) if b == "1"]
+    return best_bits, best_energy, best_zones
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -388,7 +413,7 @@ def _build_qp(qubo: QUBOProblem):
 
 def _best_feasible(quasi_dist: Any, qubo: QUBOProblem) -> tuple[str, float]:
     dist = dict(quasi_dist) if not isinstance(quasi_dist, dict) else quasi_dist
-    best_bits, best_e = _QUBO_OPT_BITS, float("inf")
+    best_bits, best_e = "", float("inf")
     for state_int in dist:
         bits = format(state_int, f"0{qubo.n}b")[::-1]
         x    = qubo.bitstring_to_x(bits)
@@ -400,9 +425,9 @@ def _best_feasible(quasi_dist: Any, qubo: QUBOProblem) -> tuple[str, float]:
     return best_bits, best_e
 
 
-def _success_prob(quasi_dist: Any, qubo: QUBOProblem) -> float:
+def _success_prob(quasi_dist: Any, qubo: QUBOProblem, opt_bits: str) -> float:
     dist    = dict(quasi_dist) if not isinstance(quasi_dist, dict) else quasi_dist
-    opt_int = int(_QUBO_OPT_BITS[::-1], 2)
+    opt_int = int(opt_bits[::-1], 2)
     return round(float(dist.get(opt_int, 0.0)), 8)
 
 
@@ -424,7 +449,7 @@ def _top_samples(quasi_dist: Any, qubo: QUBOProblem, top_n: int = 10) -> list[di
     return rows[:top_n]
 
 
-def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
+def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int, opt_bits: str, opt_energy: float, opt_zones: list[str]) -> dict:
     """
     Solve the QUBO with QAOA on the Aer local simulator.
     Qiskit symbols are imported HERE — after all pandas/parquet work is done —
@@ -443,10 +468,13 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
     pm      = generate_preset_pass_manager(optimization_level=1, backend=backend)
     sampler = AerSamplerV2(default_shots=shots, seed=seed)
 
+    initial_point = np.random.default_rng(seed).random(2 * reps)
+
     qaoa = QAOA(
         sampler=sampler,
         optimizer=COBYLA(maxiter=500, rhobeg=np.pi / 4, tol=1e-6),
         reps=reps,
+        initial_point=initial_point,
         pass_manager=pm,
     )
 
@@ -470,7 +498,7 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
     n_sel       = int(final_x.sum())
     selected    = [qubo.labels[j] for j, b in enumerate(final_bits) if b == "1"]
     depth       = er.optimal_circuit.depth() if er.optimal_circuit is not None else -1
-    succ_prob   = _success_prob(er.eigenstate, qubo)
+    succ_prob   = _success_prob(er.eigenstate, qubo, opt_bits)
     top10       = _top_samples(er.eigenstate, qubo, top_n=10)
 
     log.info(
@@ -486,6 +514,7 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
         "selected_zones":       selected,
         "best_bitstring":       final_bits,
         "qubo_energy":          round(final_energy, 6),
+        "objective_value":      round(float(qubo.c_values @ final_x), 6),
         "feasible":             n_sel == qubo.budget,
         "n_stations":           n_sel,
         "success_probability":  succ_prob,
@@ -497,8 +526,8 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
         "optimal_parameters":   [round(float(v), 6) for v in er.optimal_point]
                                 if er.optimal_point is not None else [],
         "top10_samples":        top10,
-        "matches_qubo_optimum": sorted(selected) == sorted(_QUBO_OPT_ZONES),
-        "energy_gap":           round(final_energy - _QUBO_OPT_ENERGY, 6),
+        "matches_qubo_optimum": sorted(selected) == sorted(opt_zones),
+        "energy_gap":           round(final_energy - opt_energy, 6),
     }
 
 
@@ -507,6 +536,8 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_pipeline(
+    station_count: int = 3,
+    scenario: str = "all_hours",
     reps:  int = 1,
     shots: int = 2048,
     seed:  int = 42,
@@ -516,6 +547,8 @@ def run_pipeline(
 
     Parameters
     ----------
+    station_count : number of stations to place
+    scenario : demand scenario name (all_hours, morning_peak, afternoon, overnight, weekday, weekend)
     reps  : QAOA ansatz depth (p)
     shots : simulator shots per circuit evaluation
     seed  : random seed for AerSimulator + COBYLA
@@ -528,13 +561,15 @@ def run_pipeline(
     """
     t_total = time.perf_counter()
 
-    # ── 1. AI demand prediction ───────────────────────────────────────────────
-    log.info("Pipeline stage 1: AI demand prediction")
-    demand_by_label, ai_meta = _predict_demand()
+    # ── 1. AI demand prediction (scenario-conditioned) ────────────────────────
+    log.info("Pipeline stage 1: AI demand prediction (scenario=%s)", scenario)
+    demand_by_label, ai_meta = _predict_demand(scenario=scenario)
 
     # ── 2. QUBO ───────────────────────────────────────────────────────────────
     log.info("Pipeline stage 2: QUBO construction")
-    qubo = _build_qubo_from_predictions(demand_by_label)
+    qubo = _build_qubo_from_predictions(demand_by_label, station_count)
+
+    opt_bits, opt_energy, opt_zones = _get_qubo_global_minimum(qubo)
 
     qubo_meta = {
         "n_qubits":     qubo.n,
@@ -542,18 +577,20 @@ def run_pipeline(
         "lambda":       qubo.lam,
         "c_values":     {lbl: round(float(qubo.c_values[i]), 6)
                          for i, lbl in enumerate(qubo.labels)},
-        "global_minimum_energy": round(
-            qubo.energy(qubo.bitstring_to_x(_QUBO_OPT_BITS)), 6
-        ),
+        "global_minimum_energy": round(opt_energy, 6),
     }
 
     # ── 3a. Classical solver ──────────────────────────────────────────────────
     log.info("Pipeline stage 3a: classical solver")
-    classical = _solve_classical(qubo)
+    from backend.optimization.classical_solver import solve_proximity_weighted
+    classical = solve_proximity_weighted(qubo)
 
     # ── 3b. QAOA ──────────────────────────────────────────────────────────────
     log.info("Pipeline stage 3b: QAOA (reps=%d shots=%d seed=%d)", reps, shots, seed)
-    qaoa = _solve_qaoa(qubo, reps=reps, shots=shots, seed=seed)
+    qaoa = _solve_qaoa(
+        qubo, reps=reps, shots=shots, seed=seed,
+        opt_bits=opt_bits, opt_energy=opt_energy, opt_zones=opt_zones
+    )
 
     # ── 4. Recommendation (QAOA preferred if feasible) ─────────────────────
     if qaoa["feasible"]:
@@ -567,23 +604,36 @@ def run_pipeline(
 
     total_demand = sum(demand_by_label.values())
 
-    # Zone details for the recommendation
     zones_df   = _cache.zones_df.set_index("label")
     zone_details = []
     for lbl in qubo.labels:
         row = zones_df.loc[lbl]
+        names = _cache.zone_names.get(lbl, {})
+        idx = qubo.labels.index(lbl)
+
+        d_j = demand_by_label[lbl]
+        c_j = float(qubo.c_values[idx])
+        self_demand_score = d_j / 100.0
+        proximity_spillover_score = c_j - self_demand_score
+        coverage_neighbors_count = int(qubo.coverage_adj[idx].sum()) - 1
+
         zone_details.append({
             "label":           lbl,
             "tazid":           int(row["tazid"]),
+            "name_primary":    names.get("primary"),
+            "name_secondary":  names.get("secondary"),
             "longitude":       float(row["longitude"]),
             "latitude":        float(row["latitude"]),
-            "predicted_demand_kwh_h": demand_by_label[lbl],
-            "qubo_c_value":    round(float(qubo.c_values[qubo.labels.index(lbl)]), 6),
+            "predicted_demand_kwh_h": d_j,
+            "qubo_c_value":    round(c_j, 6),
             "selected":        lbl in rec_zones,
+            "self_demand_score": round(self_demand_score, 6),
+            "proximity_spillover_score": round(proximity_spillover_score, 6),
+            "coverage_neighbors_count": coverage_neighbors_count,
         })
 
     pipeline_runtime = round(time.perf_counter() - t_total, 3)
-    log.info("Pipeline complete in %.2f s → %s", pipeline_runtime, rec_zones)
+    log.info("Pipeline complete in %.2f s → %s (scenario=%s, K=%d)", pipeline_runtime, rec_zones, scenario, station_count)
 
     return {
         "pipeline_runtime_s": pipeline_runtime,
@@ -593,11 +643,12 @@ def run_pipeline(
         "qaoa":               qaoa,
         "recommendation": {
             "selected_zones":               rec_zones,
+            "scenario":                     scenario,
             "method":                       rec_method,
             "qubo_energy":                  rec_energy,
             "feasible":                     True,
             "n_stations":                   len(rec_zones),
-            "matches_qubo_optimum":         sorted(rec_zones) == sorted(_QUBO_OPT_ZONES),
+            "matches_qubo_optimum":         sorted(rec_zones) == sorted(opt_zones),
             "predicted_demand":             {z: demand_by_label[z] for z in rec_zones},
             "total_candidate_demand_kwh_h": round(total_demand, 4),
             "zone_details":                 zone_details,

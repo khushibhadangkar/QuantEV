@@ -19,37 +19,37 @@
     "n_jobs": -1,
     "random_state": 42
   },
-  "train_time_s": 24.39,
+  "train_time_s": 0.24,
   "split": {
     "train_start": "2022-09-08 00:00:00",
     "train_end": "2023-01-07 17:00:00",
-    "train_rows": 803550,
+    "train_rows": 23376,
     "val_start": "2023-01-07 18:00:00",
     "val_end": "2023-02-02 19:00:00",
-    "val_rows": 172150,
+    "val_rows": 5008,
     "test_start": "2023-02-02 20:00:00",
     "test_end": "2023-02-28 22:00:00",
-    "test_rows": 172425
+    "test_rows": 5016
   },
   "val_metrics": {
-    "mae": 118.70457415834811,
-    "rmse": 208.21103322360523,
-    "r2": 0.9025243933027763
+    "mae": 119.0297,
+    "rmse": 357.0589,
+    "r2": 0.902063
   },
   "test_metrics": {
-    "mae": 125.06224520405576,
-    "rmse": 216.85005771933365,
-    "r2": 0.934236582049744
+    "mae": 125.3916,
+    "rmse": 385.5433,
+    "r2": 0.933812
   },
   "feature_importances": {
-    "hour": 0.048829,
-    "day_of_week": 0.003206,
-    "is_weekend": 0.000753,
-    "month": 0.0031,
-    "lag_1h": 0.144255,
-    "lag_24h": 0.320805,
-    "lag_168h": 0.185964,
-    "rolling_mean_24h": 0.293089
+    "hour": 0.131652,
+    "day_of_week": 0.004819,
+    "is_weekend": 0.001487,
+    "month": 0.006076,
+    "lag_1h": 0.122075,
+    "lag_24h": 0.296761,
+    "lag_168h": 0.162709,
+    "rolling_mean_24h": 0.274421
   },
-  "note": "Retrained with n_estimators=50, max_depth=12 for Render free-tier memory constraint. R2 unchanged (0.934 vs 0.915 original \u2014 overfitting was reduced)."
+  "note": "n_estimators=50 max_depth=12 for Render 512MiB free-tier."
 }
