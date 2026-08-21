@@ -578,6 +578,18 @@ export default function Page() {
 
               <div className="glass" style={{ borderRadius: "20px", overflow: "hidden", boxShadow: "0 12px 48px rgba(10,22,40,0.16)" }}>
 
+                <PlanningControls
+
+                  stationCount={stationCount}
+
+                  onStationCountChange={setStationCount}
+
+                  scenario={scenario}
+
+                  onScenarioChange={setScenario}
+
+                />
+
                 <ResultPanel
 
                   data={state.data}
