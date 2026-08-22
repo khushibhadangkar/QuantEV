@@ -90,92 +90,72 @@ export default function Page() {
 
 
 
-  const handleSearch = useCallback(async () => {
+  // Incremented on every new search to cancel stale animation callbacks.
+  const runIdRef = useRef(0);
+  // Records when the current search started, for the minimum-display-time guard.
+  const searchStartTimeRef = useRef<number>(0);
+
+  const handleSearch = useCallback(() => {
+    // Bump the run-ID so any in-flight animation from a previous run becomes stale.
+    ++runIdRef.current;
 
     setPhase("searching");
-
     setSequenceStep(0);
 
-    // Run the optimization sequence animation in parallel with the API call
+    // Record the start time so we can enforce a minimum animation display time.
+    searchStartTimeRef.current = Date.now();
 
-    // We drive the sequence steps manually via the map
-
-    const apiPromise = run(stationCount, scenario);
-
-
-
-    // The map sequence runs independently; sequence steps 0-4 are paced below
-
-    // We pass setSequenceStep as the callback
-
-    // (zones will be empty for animation — we just need the sequence)
-
-    // Start with a placeholder animation using cached zone positions if available
-
-    // After API resolves, showResults drives the final map state
-
-    await apiPromise;
-
+    // Fire the API request (no await — we react to state changes below).
+    run(stationCount, scenario);
   }, [run, stationCount, scenario]);
 
-
-
-  // Transition on API state change (render-phase ref pattern)
-
+  // Transition on API state change (render-phase ref pattern).
   const prevStatusRef = useRef(state.status);
 
   if (state.status !== prevStatusRef.current) {
-
     prevStatusRef.current = state.status;
 
     if (state.status === "success") {
-
-      // Drive map animation with microtask
+      // Capture the run-ID at the time of this render so the async closure
+      // can detect if a newer run has started before it finishes.
+      const capturedRunId = runIdRef.current;
 
       Promise.resolve().then(async () => {
-
         if (state.status !== "success") return;
+        // Stale-result guard: abort if the user has already started a new run.
+        if (runIdRef.current !== capturedRunId) return;
 
         const { zone_details, selected_zones } = state.data.recommendation;
 
-        // Run the full 5-stage optimization sequence on the map
+        // Minimum animation display: show the loading UI for at least 1500 ms
+        // so results don't flash in on very fast (warm) requests.
+        const MIN_ANIMATION_MS = 1500;
+        const elapsed = Date.now() - searchStartTimeRef.current;
+        const remaining = Math.max(0, MIN_ANIMATION_MS - elapsed);
+        if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
 
-        await mapRef.current?.runOptimizationSequence(zone_details);
+        // Stale check again after the minimum wait.
+        if (runIdRef.current !== capturedRunId) return;
 
-
-
-        // Force sequence to completion state briefly before transitioning
-
+        // Immediately show the result panel — do NOT await the animation.
         setSequenceStep(5);
-
-        await new Promise((r) => setTimeout(r, 600));
-
-
-
-        // Then reveal the results
-
         setPhase("result");
-
         mapRef.current?.showResults(zone_details, selected_zones);
 
-
-
         setTimeout(() => {
-
           resultScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
         }, 300);
 
+        // Let the map animation run to completion in the background (non-blocking).
+        // It was already started when the search began; if it's still running, it
+        // will finish gracefully. showResults will overlay the final state on top.
+        mapRef.current?.runOptimizationSequence(zone_details).catch(() => {});
       });
-
     }
 
     if (state.status === "error") {
-
       setPhase("error");
-
     }
-
   }
 
 
