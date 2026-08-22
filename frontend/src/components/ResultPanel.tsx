@@ -181,7 +181,7 @@ export function ResultPanel({
                         {zone.name_primary || `Site ${zone.label}`}
                       </div>
                       <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-4)" }}>
-                        {zone.name_secondary ? `${zone.name_secondary} · ` : ""}<span className="numeric">{zone.label}</span> · <span className="numeric">{formatDist(dist)}</span> away
+                        {zone.name_secondary ? `${zone.name_secondary} · ` : ""}<span className="numeric">{formatDist(dist)}</span> away
                       </div>
                     </div>
                   </div>
