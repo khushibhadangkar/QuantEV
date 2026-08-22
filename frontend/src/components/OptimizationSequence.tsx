@@ -30,7 +30,7 @@ const STAGES = [
 
     label: "DETECTING COVERAGE GAPS",
 
-    detail: "1.5 km service radius",
+    detail: "Evaluating coverage gaps",
 
     mapAction: "Scanning for infrastructure gaps…",
 

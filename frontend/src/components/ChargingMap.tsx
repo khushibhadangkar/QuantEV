@@ -199,7 +199,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
               opacity:0;
               animation:fade-in 0.4s ease ${0.1 + i * 0.08}s both;
             ">
-              <span style="font-weight:600;color:var(--color-navy-700)">${z.label}</span>
+              <span style="font-weight:600;color:var(--color-navy-700)">${z.name_primary || `Site ${z.label}`}</span>
               <span style="margin-left:4px;color:var(--color-ink-3)">${formatDemand(z.predicted_demand_kwh_h)}</span>
             </div>`,
             iconSize: [0, 0], iconAnchor: [0, 0],
@@ -293,7 +293,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
             m.bindPopup(L.popup({ closeButton: true, maxWidth: 220, offset: [0, -5] }).setContent(`
               <div style="font-family:Times New Roman,serif;padding:16px 18px;min-width:180px;">
                 <div style="display:inline-block;background:var(--color-grey-100);color:var(--color-ink-3);font-size:10px;letter-spacing:0.08em;padding:3px 8px;border-radius:4px;margin-bottom:10px;">Candidate site</div>
-                <div style="font-size:22px;color:var(--color-ink);letter-spacing:-0.02em;margin-bottom:12px;">Site ${z.label}</div>
+                <div style="font-size:22px;color:var(--color-ink);letter-spacing:-0.02em;margin-bottom:12px;">${z.name_primary || `Site ${z.label}`}</div>
                 <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--color-border);padding-top:10px;">
                   <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--color-ink-4);">Predicted demand</span><span style="font-size:13px;color:var(--color-ink);">${formatDemand(z.predicted_demand_kwh_h)}</span></div>
                   <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;color:var(--color-ink-4);">QUBO coverage</span><span style="font-size:13px;color:var(--color-ink);">${z.qubo_c_value.toFixed(3)}</span></div>
@@ -322,7 +322,6 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
 
               // Score badge + marker
               const dist = haversine(uLat, uLng, z.latitude, z.longitude);
-              const score = Math.round(70 + (z.predicted_demand_kwh_h / maxDemand) * 28);
               const icon = L.divIcon({
                 className: "",
                 html: `<div style="position:relative;width:56px;height:56px;transform:translate(-28px,-28px);">
@@ -341,12 +340,10 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
                     <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><circle cx="4" cy="4" r="2.5" fill="white"/></svg>
                     Recommended site
                   </div>
-                  <div style="font-size:26px;letter-spacing:-0.025em;color:var(--color-ink);margin-bottom:4px;">Site ${z.label}</div>
+                  <div style="font-size:26px;letter-spacing:-0.025em;color:var(--color-ink);margin-bottom:4px;">${z.name_primary || `Site ${z.label}`}</div>
                   <div style="font-size:13px;color:var(--color-ink-3);margin-bottom:16px;">${z.latitude.toFixed(4)}°N, ${z.longitude.toFixed(4)}°E</div>
                   <div style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--color-border);padding-top:14px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--color-ink-4);">Predicted demand</span><span style="font-size:15px;color:var(--color-ink);">${formatDemand(z.predicted_demand_kwh_h)}</span></div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--color-ink-4);">Site score</span><span style="font-size:15px;color:var(--color-navy-800);font-weight:600;">${score}/100</span></div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--color-ink-4);">Coverage radius</span><span style="font-size:15px;color:var(--color-ink);">1.5 km</span></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--color-ink-4);">Distance from area</span><span style="font-size:15px;color:var(--color-ink);">${dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}</span></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:var(--color-ink-4);">QUBO score</span><span style="font-size:15px;color:var(--color-ink);">${z.qubo_c_value.toFixed(3)}</span></div>
                   </div>

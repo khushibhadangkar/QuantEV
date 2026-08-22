@@ -97,6 +97,13 @@ class _PipelineCache:
     zone_names:         dict[str, dict] = field(default_factory=dict) # zone_names.json
     ready:              bool  = field(default=False)
 
+    # QAOA cached objects to save setup time
+    qaoa_seed:          int   = field(default=None)
+    qaoa_shots:         int   = field(default=None)
+    qiskit_backend:     Any   = field(default=None)
+    qiskit_pm:          Any   = field(default=None)
+    qiskit_sampler:     Any   = field(default=None)
+
 
 _cache = _PipelineCache()
 
@@ -464,15 +471,24 @@ def _solve_qaoa(qubo: QUBOProblem, reps: int, shots: int, seed: int, opt_bits: s
     from qiskit_optimization.optimizers import COBYLA
 
     qp      = _build_qp(qubo)
-    backend = AerSimulator(seed_simulator=seed)
-    pm      = generate_preset_pass_manager(optimization_level=1, backend=backend)
-    sampler = AerSamplerV2(default_shots=shots, seed=seed)
+    
+    # ── Reuse cached QAOA infrastructure ──────────────────────────────────────
+    if _cache.qiskit_backend is None or _cache.qaoa_seed != seed or _cache.qaoa_shots != shots:
+        _cache.qiskit_backend = AerSimulator(seed_simulator=seed)
+        _cache.qiskit_pm      = generate_preset_pass_manager(optimization_level=1, backend=_cache.qiskit_backend)
+        _cache.qiskit_sampler = AerSamplerV2(default_shots=shots, seed=seed)
+        _cache.qaoa_seed      = seed
+        _cache.qaoa_shots     = shots
+
+    backend = _cache.qiskit_backend
+    pm      = _cache.qiskit_pm
+    sampler = _cache.qiskit_sampler
 
     initial_point = np.random.default_rng(seed).random(2 * reps)
 
     qaoa = QAOA(
         sampler=sampler,
-        optimizer=COBYLA(maxiter=500, rhobeg=np.pi / 4, tol=1e-6),
+        optimizer=COBYLA(maxiter=50, rhobeg=np.pi / 4, tol=1e-6),
         reps=reps,
         initial_point=initial_point,
         pass_manager=pm,

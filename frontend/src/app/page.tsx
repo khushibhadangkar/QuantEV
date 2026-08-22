@@ -720,7 +720,7 @@ export default function Page() {
 
                   { color: "var(--color-navy-900)", border: "2.5px solid white", label: "Recommended site" },
 
-                  { color: "rgba(10,22,40,0.05)", border: "1.5px dashed rgba(10,22,40,0.2)", label: "Coverage area (1.5 km)" },
+                  { color: "rgba(10,22,40,0.05)", border: "1.5px dashed rgba(10,22,40,0.2)", label: "Coverage area" },
 
                   { color: "white", border: "1.5px solid rgba(10,22,40,0.25)", label: "Candidate site" },
 
