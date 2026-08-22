@@ -21,7 +21,7 @@ The real challenge is a **combinatorial infrastructure planning problem**:
 - How can infrastructure be distributed efficiently?
 - Which configuration provides the best trade-off between demand coverage and network efficiency?
 
-**QuantEV** approaches this problem as an end-to-end decision intelligence pipeline.
+**QuantEV** approaches this problem as an end to end decision intelligence pipeline.
 
 It uses a machine-learning model to estimate charging demand and then formulates infrastructure placement as a **Quadratic Unconstrained Binary Optimization (QUBO)** problem. The resulting optimization problem is solved using the **Quantum Approximate Optimization Algorithm (QAOA)** and evaluated against a classical baseline.
 
