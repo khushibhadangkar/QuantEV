@@ -18,7 +18,6 @@ The real challenge is a **combinatorial infrastructure planning problem**:
 - Which areas are underserved?
 - Which candidate locations provide the greatest coverage?
 - How many stations should be deployed?
-- How can infrastructure be distributed efficiently?
 - Which configuration provides the best trade-off between demand coverage and network efficiency?
 
 **QuantEV** approaches this problem as an end to end decision intelligence pipeline.
