@@ -29,22 +29,37 @@ interface SearchBarProps {
 export function SearchBar({ onLocationSelect, disabled }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = query.trim().length > 0
     ? SHENZHEN_LOCATIONS.filter((l) =>
         l.name.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 6)
-    : SHENZHEN_LOCATIONS.slice(0, 6);
+      )
+    : SHENZHEN_LOCATIONS;
 
-  const showDropdown = focused && !disabled;
+  const showDropdown = (focused || dropdownOpen) && !disabled;
 
   function handleSelect(loc: typeof SHENZHEN_LOCATIONS[0]) {
     setQuery(loc.name);
     setFocused(false);
+    setDropdownOpen(false);
     inputRef.current?.blur();
     onLocationSelect(loc.lat, loc.lng, loc.name);
+  }
+
+  function toggleDropdown() {
+    if (disabled) return;
+    if (showDropdown) {
+      setDropdownOpen(false);
+      setFocused(false);
+      inputRef.current?.blur();
+    } else {
+      inputRef.current?.focus();
+      setDropdownOpen(true);
+      setFocused(true);
+    }
   }
 
   function handleUseLocation() {
@@ -113,9 +128,20 @@ export function SearchBar({ onLocationSelect, disabled }: SearchBarProps) {
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 160)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setDropdownOpen(true);
+          }}
+          onFocus={() => {
+            setFocused(true);
+            setDropdownOpen(true);
+          }}
+          onBlur={() => {
+            setTimeout(() => {
+              setFocused(false);
+              setDropdownOpen(false);
+            }, 160);
+          }}
           placeholder="Select a planning area in Shenzhen…"
           disabled={disabled}
           style={{
@@ -130,6 +156,51 @@ export function SearchBar({ onLocationSelect, disabled }: SearchBarProps) {
             letterSpacing: "-0.005em",
           }}
         />
+
+        {/* Dropdown toggle chevron */}
+        <button
+          onClick={toggleDropdown}
+          onMouseDown={(e) => e.preventDefault()}
+          disabled={disabled}
+          title="Show all locations"
+          style={{
+            padding: "0 10px",
+            height: "100%",
+            border: "none",
+            background: "transparent",
+            cursor: disabled ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--color-ink-4)",
+            transition: "color 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            if (!disabled) e.currentTarget.style.color = "var(--color-ink)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--color-ink-4)";
+          }}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            style={{
+              transform: showDropdown ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
+            <path
+              d="M2.5 4.5L6 8L9.5 4.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
 
         {/* Use my location */}
         <button
@@ -212,7 +283,8 @@ export function SearchBar({ onLocationSelect, disabled }: SearchBarProps) {
             borderRadius: "0 0 16px 16px",
             border: "1.5px solid rgba(10,22,40,0.18)",
             borderTop: "1px solid var(--color-border-subtle)",
-            overflow: "hidden",
+            overflowY: "auto",
+            maxHeight: "260px",
             zIndex: 100,
             boxShadow: "0 12px 40px rgba(10,22,40,0.14)",
           }}
