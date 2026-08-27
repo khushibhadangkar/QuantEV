@@ -1,5 +1,5 @@
 """
-backend/quantum/qubo.py
+quantum/qubo.py
 =======================
 QUBO formulation for the 8-zone, 3-station EV charger-placement problem.
 

@@ -1,5 +1,5 @@
 """
-backend/ai/train.py
+ai_model/train.py
 ===================
 Trains a RandomForestRegressor baseline for next-hour EV charging demand
 (volume_kwh) and persists the model, feature pipeline, and evaluation metrics.
