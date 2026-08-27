@@ -22,7 +22,7 @@ pip install -r requirements-prod.txt --quiet
 echo "Dependencies installed."
 
 # ── 2. Train model if artifacts are missing ──────────────────────────────────
-MODELS_DIR="models"
+MODELS_DIR="ai_model/models"
 PIPELINE="$MODELS_DIR/feature_pipeline.joblib"
 PARQUET="data/processed/demand_hourly.parquet"
 
@@ -59,12 +59,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score, mean_absolute_error
 
-from backend.ai.features import (
+from ai_model.features import (
     build_features, chronological_split, FEATURE_COLS, TARGET_COL,
 )
 
 TAZIDS = [1026, 746, 716, 965, 706, 745, 744, 737]
-MODELS = Path("models")
+MODELS = Path("ai_model/models")
 
 t0 = time.perf_counter()
 

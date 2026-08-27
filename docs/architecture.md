@@ -2,7 +2,7 @@
 
 ## Component Responsibilities
 
-### `backend/ai`
+### `ai_model`
 - Feature engineering from raw EV / geographic data
 - Training and persisting a zone-level demand prediction model (scikit-learn)
 - Inference: given zone features → predicted demand score (float 0–1)

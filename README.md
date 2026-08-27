@@ -42,7 +42,7 @@ QuantEV is structured as a monorepo consisting of a FastAPI backend, a Next.js f
                                      |
                                      v
                       +-----------------------------+
-                      |      backend/ai             |
+                      |      ai_model               |
                       |   Feature Engineering &     |
                       |   Random Forest Regressor   |
                       +--------------+--------------+
@@ -85,10 +85,11 @@ QuantEV is structured as a monorepo consisting of a FastAPI backend, a Next.js f
 
 ```
 EV/
+├── ai_model/                    # AI demand forecasting package & artifacts
+│   ├── features.py              # Lag & rolling window feature engineering
+│   ├── train.py                 # RandomForestRegressor model training
+│   └── models/                  # Saved ML estimators & evaluation metrics
 ├── backend/
-│   ├── ai/                      # Machine learning demand forecasting
-│   │   ├── features.py          # Lag & rolling window feature engineering
-│   │   └── train.py             # RandomForestRegressor model training
 │   ├── optimization/            # Classical baselines
 │   │   └── classical_solver.py  # Combinatorial exhaustive search solver
 │   ├── quantum/                 # Quantum optimization
@@ -109,7 +110,6 @@ EV/
 │   │   ├── components/          # Interactive map & solver controls
 │   │   └── hooks/               # Custom state fetching hooks
 │   └── package.json
-├── models/                      # Saved ML estimators & evaluation metrics
 ├── build.sh                     # Build and compile pipeline script
 ├── pyproject.toml               # Python packaging configuration
 ├── render.yaml                  # Cloud hosting deployment specification

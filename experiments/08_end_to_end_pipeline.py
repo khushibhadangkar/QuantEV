@@ -58,7 +58,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # ── Project module imports (no qiskit yet — avoids the aer/numpy segfault) ───
-from backend.ai.features import (
+from ai_model.features import (
     FEATURE_COLS,
     build_features,
     chronological_split,
@@ -73,8 +73,8 @@ from backend.optimization.classical_solver import (
 PARQUET_PATH  = PROJECT_ROOT / "data" / "processed" / "demand_hourly.parquet"
 ZONES_CSV     = PROJECT_ROOT / "data" / "processed" / "candidate_zones.csv"
 DIST_CSV      = PROJECT_ROOT / "data" / "processed" / "candidate_distance_matrix.csv"
-PIPELINE_PATH = PROJECT_ROOT / "models" / "feature_pipeline.joblib"
-METRICS_PATH  = PROJECT_ROOT / "models" / "metrics.json"
+PIPELINE_PATH = PROJECT_ROOT / "ai_model" / "models" / "feature_pipeline.joblib"
+METRICS_PATH  = PROJECT_ROOT / "ai_model" / "models" / "metrics.json"
 RESULTS_DIR   = PROJECT_ROOT / "experiments" / "results"
 OUTPUT_JSON   = RESULTS_DIR / "end_to_end_result.json"
 

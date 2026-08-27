@@ -51,7 +51,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--models",
         type=Path,
-        default=repo_root / "models",
+        default=repo_root / "ai_model" / "models",
         help="Directory where artefacts (model, pipeline, metrics) are saved.",
     )
     return p.parse_args()
@@ -69,7 +69,7 @@ def main() -> int:
     log.info("Models  : %s", args.models)
 
     # Import here so module-level logging in train.py is already configured
-    from backend.ai.train import run
+    from ai_model.train import run
 
     metrics = run(args.parquet, args.models)
 

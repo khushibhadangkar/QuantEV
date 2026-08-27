@@ -6,7 +6,7 @@ Pipeline service: AI demand prediction → QUBO construction → QAOA solve.
 This module is the single source of truth for pipeline execution inside the
 API.  It reuses every existing function unchanged:
 
-    backend.ai.features          build_features(), chronological_split()
+    ai_model.features            build_features(), chronological_split()
     backend.quantum.qubo         build_qubo(), QUBOProblem
     backend.optimization.classical_solver   PlacementProblem, solve_exhaustive(), solve_proximity_weighted(), covered_demand()
 
@@ -41,7 +41,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from backend.ai.features import (
+from ai_model.features import (
     FEATURE_COLS,
     build_features,
     chronological_split,
@@ -56,8 +56,8 @@ _PARQUET      = _ROOT / "data" / "processed" / "demand_hourly.parquet"
 _ZONES_CSV    = _ROOT / "data" / "processed" / "candidate_zones.csv"
 _ZONE_NAMES_JSON = _ROOT / "data" / "processed" / "zone_names.json"
 _DIST_CSV     = _ROOT / "data" / "processed" / "candidate_distance_matrix.csv"
-_PIPELINE_PKL = _ROOT / "models" / "feature_pipeline.joblib"
-_METRICS_JSON = _ROOT / "models" / "metrics.json"
+_PIPELINE_PKL = _ROOT / "ai_model" / "models" / "feature_pipeline.joblib"
+_METRICS_JSON = _ROOT / "ai_model" / "models" / "metrics.json"
 
 # ── Zone mapping ──────────────────────────────────────────────────────────────
 _LABEL_TO_TAZID: dict[str, int] = {
@@ -150,8 +150,8 @@ def _load_cache() -> None:
     # ── Pre-flight: verify all required files exist ───────────────────────────
     missing: list[str] = []
     for path, label in [
-        (_PIPELINE_PKL, "models/feature_pipeline.joblib"),
-        (_METRICS_JSON,  "models/metrics.json"),
+        (_PIPELINE_PKL, "ai_model/models/feature_pipeline.joblib"),
+        (_METRICS_JSON,  "ai_model/models/metrics.json"),
         (_PARQUET,       "data/processed/demand_hourly.parquet"),
         (_ZONES_CSV,     "data/processed/candidate_zones.csv"),
         (_DIST_CSV,      "data/processed/candidate_distance_matrix.csv"),

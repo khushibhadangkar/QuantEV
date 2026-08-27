@@ -1,11 +1,11 @@
 # ML model artifacts — too large for git (300+ MB each).
 # Regenerated at deploy time by build.sh using the committed parquet data.
-models/*.joblib
-models/*.pkl
-models/*.h5
-models/*.pt
-models/*.pth
-models/*.bin
+ai_model/models/*.joblib
+ai_model/models/*.pkl
+ai_model/models/*.h5
+ai_model/models/*.pt
+ai_model/models/*.pth
+ai_model/models/*.bin
 *.pkl
 *.joblib
 
