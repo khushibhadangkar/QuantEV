@@ -52,7 +52,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # build_qubo uses only numpy + pandas — safe to import before qiskit
-from backend.quantum.qubo import build_qubo, QUBOProblem
+from quantum.qubo import build_qubo, QUBOProblem
 
 ZONES_CSV   = PROJECT_ROOT / "data" / "processed" / "candidate_zones.csv"
 DIST_CSV    = PROJECT_ROOT / "data" / "processed" / "candidate_distance_matrix.csv"
@@ -220,7 +220,7 @@ def main(backend_name: str, reps: int, shots: int) -> None:
     print(f"  Classical opt  : {CLASSICAL_OPTIMUM_ZONES}  E={CLASSICAL_OPTIMUM_ENERGY}")
 
     print("\n[1/5] Building QUBO …")
-    qubo = build_qubo(zones_csv=ZONES_CSV, dist_csv=DIST_CSV)
+    qubo = build_qubo(zones_csv=ZONES_CSV, dist_csv=DIST_CSV, budget=3)
     e_check = qubo.energy(qubo.bitstring_to_x(CLASSICAL_OPTIMUM_BITS))
     assert abs(e_check - CLASSICAL_OPTIMUM_ENERGY) < 1e-3, f"QUBO check: {e_check}"
     print(f"      n={qubo.n}  K={qubo.budget}  λ={qubo.lam}")

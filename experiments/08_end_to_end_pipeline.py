@@ -63,7 +63,7 @@ from ai_model.features import (
     build_features,
     chronological_split,
 )
-from backend.quantum.qubo import build_qubo, QUBOProblem
+from quantum.qubo import build_qubo, QUBOProblem
 from backend.optimization.classical_solver import (
     PlacementProblem,
     solve_exhaustive,
@@ -239,7 +239,7 @@ def stage2_build_qubo(demand_by_label: dict[str, float]) -> tuple[QUBOProblem, s
     tmp_csv = ZONES_CSV.parent / "_pipeline_zones_tmp.csv"
     zones_df.to_csv(tmp_csv, index=False)
 
-    qubo = build_qubo(zones_csv=tmp_csv, dist_csv=DIST_CSV)
+    qubo = build_qubo(zones_csv=tmp_csv, dist_csv=DIST_CSV, budget=3)
 
     # Clean up temp file
     tmp_csv.unlink(missing_ok=True)

@@ -13,7 +13,7 @@
 - Algorithm: greedy top-K or scipy integer-programming baseline
 - Output: list of selected zone IDs
 
-### `backend/quantum`
+### `quantum`
 - QUBO formulation of the station-placement problem
 - QAOA circuit construction via `qiskit.circuit` + `qiskit_optimization`
 - Simulation via Qiskit Aer `AerSimulator` (statevector / shot-based)

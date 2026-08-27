@@ -26,7 +26,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from backend.quantum.qubo import QUBOProblem
+from quantum.qubo import QUBOProblem
 
 
 # ─────────────────────────────────────────────────────────────────────────────

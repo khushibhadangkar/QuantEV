@@ -62,7 +62,7 @@ from qiskit_optimization.problems import QuadraticProgram
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.quantum.qubo import build_qubo, QUBOProblem
+from quantum.qubo import build_qubo, QUBOProblem
 
 ZONES_CSV   = PROJECT_ROOT / "data" / "processed" / "candidate_zones.csv"
 DIST_CSV    = PROJECT_ROOT / "data" / "processed" / "candidate_distance_matrix.csv"
@@ -364,7 +364,7 @@ def main(reps_list: list[int], seeds: list[int], shots: int) -> None:
 
     # ── Build QUBO once ──────────────────────────────────────────────────────
     print("\n[1/4] Building QUBO …")
-    qubo = build_qubo(zones_csv=ZONES_CSV, dist_csv=DIST_CSV)
+    qubo = build_qubo(zones_csv=ZONES_CSV, dist_csv=DIST_CSV, budget=3)
     x_opt  = qubo.bitstring_to_x(CLASSICAL_OPTIMUM_BITS)
     e_check = qubo.energy(x_opt)
     assert abs(e_check - CLASSICAL_OPTIMUM_ENERGY) < 1e-3, (

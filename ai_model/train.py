@@ -35,7 +35,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from backend.ai.features import (
+from ai_model.features import (
     FEATURE_COLS,
     TARGET_COL,
     build_features,

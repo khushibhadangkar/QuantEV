@@ -62,7 +62,7 @@ QuantEV is structured as a monorepo consisting of a FastAPI backend, a Next.js f
                               |              |
                               v              |
                       +---------------------+ |
-                      |    backend/quantum  | |
+                      |    quantum          | |
                       |    QUBO Formulation | |
                       |     & QAOA Solver   | |
                       +-------+-------------+ |
@@ -92,11 +92,11 @@ EV/
 ├── backend/
 │   ├── optimization/            # Classical baselines
 │   │   └── classical_solver.py  # Combinatorial exhaustive search solver
-│   ├── quantum/                 # Quantum optimization
-│   │   └── qubo.py              # Mathematical formulation of QUBO matrix
 │   └── api/                     # FastAPI endpoint orchestration
 │       ├── routers/             # API routing (optimize, health, status)
 │       └── services/            # Pipeline execution service
+├── quantum/                     # Quantum optimization package
+│   └── qubo.py                  # Mathematical formulation of QUBO matrix
 ├── data/
 │   ├── raw/                     # Original hackathon datasets
 │   └── processed/               # Parquet demand files, distances, and zones

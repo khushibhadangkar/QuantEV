@@ -7,7 +7,7 @@ This module is the single source of truth for pipeline execution inside the
 API.  It reuses every existing function unchanged:
 
     ai_model.features            build_features(), chronological_split()
-    backend.quantum.qubo         build_qubo(), QUBOProblem
+    quantum.qubo                 build_qubo(), QUBOProblem
     backend.optimization.classical_solver   PlacementProblem, solve_exhaustive(), solve_proximity_weighted(), covered_demand()
 
 The QAOA helpers are inlined here (same logic as experiments/05 and 08) because
@@ -46,7 +46,7 @@ from ai_model.features import (
     build_features,
     chronological_split,
 )
-from backend.quantum.qubo import build_qubo, QUBOProblem, objective_value as qubo_objective_value
+from quantum.qubo import build_qubo, QUBOProblem, objective_value as qubo_objective_value
 
 log = logging.getLogger(__name__)
 
